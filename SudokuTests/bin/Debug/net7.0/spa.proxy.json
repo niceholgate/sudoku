@@ -1,0 +1,8 @@
+{
+"SpaProxyServer": {
+"ServerUrl": "https://localhost:44460",
+"LaunchCommand": "npm start",
+"WorkingDirectory": "/Users/nholgate/Projects/Sudoku/Sudoku/ClientApp/",
+"MaxTimeoutInSeconds": "120"
+}
+}
