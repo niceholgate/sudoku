@@ -1,5 +1,4 @@
-﻿using System;
-namespace Sudoku.Models {
+﻿namespace Sudoku.Models {
 	public class Element {
 		public readonly int row;
 
@@ -10,7 +9,7 @@ namespace Sudoku.Models {
 		public Element(int row, int col) {
 			this.row = row;
 			this.col = col;
-			this.Candidates = new List<int>();
+			Candidates = new List<int>();
         }
 	}
 }

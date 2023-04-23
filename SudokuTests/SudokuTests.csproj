@@ -19,9 +19,6 @@
     <None Remove="Models\" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Models\" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\Sudoku\Sudoku.csproj" />
   </ItemGroup>
 </Project>
