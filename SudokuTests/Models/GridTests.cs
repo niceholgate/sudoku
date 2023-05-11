@@ -105,12 +105,21 @@ public class GridTests {
 
 
     [TestMethod]
-    public void TestSolve_Generate() {
+    public void TestGenerateRandomFilled() {
         List<Grid> randomGrids = Enumerable.Range(0, 10).Select(x => Grid.GenerateRandomFilled()).ToList();
-        Grid grid = Grid.GenerateRandomFilled();
+        foreach (Grid grid in randomGrids) {
+            Assert.AreEqual(grid.Solutions.Count, 1);
+            Assert.IsTrue(grid.IsSolved(0));
+        }
+    }
 
-        Assert.AreEqual(grid.Solutions.Count, 1);
-        Assert.IsTrue(grid.IsSolved(0));
+    [TestMethod]
+    public void TestInvestigateDistOfBlankSquaresForMostSparseUniqueSoln() {
+        List<Grid> randomGrids = Enumerable.Range(0, 10).Select(x => Grid.GenerateRandomUniqueSparse()).ToList();
+        foreach (Grid grid in randomGrids) {
+            Assert.IsTrue(grid.nonEmptyElements.Count > 0);
+            Assert.AreEqual(1, grid.Solutions.Count);
+        }
     }
 }
 

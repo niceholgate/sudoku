@@ -1,6 +1,4 @@
-﻿using System;
-using System.Diagnostics;
-using System.Linq;
+﻿using System.Diagnostics;
 namespace Sudoku.Models {
 
 	public class Grid {
@@ -18,12 +16,73 @@ namespace Sudoku.Models {
 
         private int[,] workingValues = new int[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
 
-        private List<Element> graph = new List<Element>();
+        private List<Element> graph = new();
+
+        public List<Element> nonEmptyElements = new();
 
         public Grid(int[,] initialValues) {
             InitialValues = initialValues;
             workingValues = (int[,])initialValues.Clone();
             InitializeGraph();
+        }
+
+        /*
+         * 
+         */
+        public static Grid GenerateRandomFilled() {
+
+            int[,] values = new int[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
+
+            // Create a random row and insert it randomly
+            int[] randomRow = Enumerable.Range(1, 9).OrderBy(a => RANDOM_NUMBER_GENERATOR.Next()).ToArray();
+            int randomRowIndex = RANDOM_NUMBER_GENERATOR.Next(0, 9);
+            for (int i = 0; i < 9; i++) {
+                values[randomRowIndex, i] = randomRow[i];
+            }
+
+            // Add a random column - must shuffle it until it fits with existing row
+            int randomColIndex = RANDOM_NUMBER_GENERATOR.Next(0, 9);
+            int[] randomCol;
+            while (!IsColumnThirdSafe(randomColIndex, randomRowIndex / 3, values)) {
+                randomCol = Enumerable.Range(1, 9).OrderBy(a => RANDOM_NUMBER_GENERATOR.Next()).ToArray();
+                for (int j = 0; j < 9; j++) {
+                    values[j, randomColIndex] = randomCol[j];
+                }
+            }
+
+            Grid grid = new(values);
+            grid.Solve(1);
+            // Creating yet another grid is a hack to replace the initial values with the solution
+            Grid finalGrid = new Grid((int[,])grid.workingValues.Clone());
+            finalGrid.Solve(1);
+            return finalGrid;
+        }
+
+        /*
+         * 
+         */
+        public static Grid GenerateRandomUniqueSparse() {
+            Grid grid = GenerateRandomFilled();
+            int valueRemoved = 0;
+            Element randomNonEmptyElement = new(0, 0);
+            Grid lastWithSingleSolution = new((int[,])grid.InitialValues.Clone());
+            DualWrite($"\n{grid.Solutions.Count.ToString()}\n");
+            while (grid.Solutions.Count == 1) {
+                lastWithSingleSolution = new((int[,])grid.InitialValues.Clone());
+                // Remove random filled cells until the solution stops being unique
+                randomNonEmptyElement = grid.nonEmptyElements.ElementAt(RANDOM_NUMBER_GENERATOR.Next(0, grid.nonEmptyElements.Count));
+                valueRemoved = grid.RemoveInitialValueAndRefreshGraph(randomNonEmptyElement);
+                //grid.InitializeGraph();
+                grid.Solve();
+                DualWrite(grid.Solutions.Count.ToString());
+            }
+            // As soon the solutions count exceeds 1, undo the last removal
+            //grid.AddInitialValueAndRefreshGraph(randomNonEmptyElement, valueRemoved);
+            //grid.InitializeGraph();
+            //grid.Solve();
+            //return grid;
+            lastWithSingleSolution.Solve();
+            return lastWithSingleSolution;
         }
 
         public bool IsSolved(int solutionNumber) { 
@@ -35,7 +94,7 @@ namespace Sudoku.Models {
 
         private static bool IsColumnSafe(int col, int[,] grid) {
             for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
-                if (!IsSafe(grid, row, col, grid[row, col])) {
+                if (!IsSafe(grid, new Element(row, col), grid[row, col])) {
                     return false;
                 }
             }
@@ -48,16 +107,19 @@ namespace Sudoku.Models {
                 throw new ArgumentException($"Must specify a column third from within {validThirds}");
             }
             for (int row = colThird*3; row <= colThird*3 + 2; row++) {
-                if (!IsSafe(grid, row, col, grid[row, col])) {
+                if (!IsSafe(grid, new Element(row, col), grid[row, col])) {
                     return false;
                 }
             }
             return true;
         }
 
-        public static bool IsSafe(int[,] grid, int row, int col, int num) {
-            if (num < 1 || num > 9) return false;
-
+        private static bool IsSafe(int[,] grid, Element element, int num) {
+            if (num == 0) return false;
+            if (num < 0 || num > 9) {
+                throw new ArgumentOutOfRangeException($"Illegal Sudoku value: {num}");
+            };
+            int row = element.row, col = element.col;
 
             for (int i = 0; i < SUDOKU_ROWS_COLS; i++) {
                 if (i != col && grid[row, i] == num) return false;
@@ -73,34 +135,6 @@ namespace Sudoku.Models {
             }
 
             return true;
-        }
-
-        public static Grid GenerateRandomFilled() {
-
-            int[,] values = new int[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
-
-            // Create a random row and insert it randomly
-            int[] randomRow = Enumerable.Range(1, 9).OrderBy(a => RANDOM_NUMBER_GENERATOR.Next()).ToArray();
-            int randomRowIndex = RANDOM_NUMBER_GENERATOR.Next(0, 9);
-            for (int i = 0; i < 9; i++) {
-                values[randomRowIndex, i] = randomRow[i];
-            }
-
-            // Add a random column - must shuffle it until it fits with existing row
-            // TODO: make it faster by only checking 3 critical cells
-            int randomColIndex = RANDOM_NUMBER_GENERATOR.Next(0, 9);
-            int[] randomCol;
-            while (!IsColumnThirdSafe(randomColIndex, randomRowIndex / 3, values)) {
-                randomCol = Enumerable.Range(1, 9).OrderBy(a => RANDOM_NUMBER_GENERATOR.Next()).ToArray();
-                for (int j = 0; j < 9; j++) {
-                    values[j, randomColIndex] = randomCol[j];
-                }
-                PrintValues(values);
-            }
-
-            Grid grid = new Grid(values);
-            grid.Solve(1);
-            return grid;
         }
 
         public bool Solve() {
@@ -125,10 +159,13 @@ namespace Sudoku.Models {
 
             for (int i = 0; i < el.Candidates.Count; ++i) { // i++ ?
                 int num = el.Candidates.ElementAt(i);
-                if (IsSafe(workingValues, el.row, el.col, num)) {
+                if (IsSafe(workingValues, el, num)) {
                     workingValues[el.row, el.col] = num;
                     graph.RemoveAt(graph.Count - 1);
+                    Element newNonEmptyElement = new Element(el.row, el.col);
+                    nonEmptyElements.Add(newNonEmptyElement);
                     if (Solve(maxSolutions)) return true;
+                    nonEmptyElements.Remove(newNonEmptyElement);
                     graph.Add(el);
                     graph.Sort((Element a, Element b) => b.Candidates.Count - a.Candidates.Count);
                     workingValues[el.row, el.col] = 0;
@@ -138,29 +175,95 @@ namespace Sudoku.Models {
         }
 
         private void InitializeGraph() {
+            Solutions.Clear();
+            graph.Clear();
+            nonEmptyElements.Clear();
             for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
                 for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
                     if (InitialValues[row, col] == 0) {
-                        Element e = new Element(row, col);
-                        for (int num = 1; num <= SUDOKU_ROWS_COLS; num++) {
-                            if (IsSafe(workingValues,row, col, num)) {
-                                e.Candidates.Add(num);
-                            }
-                        }
-                        graph.Add(e);
+                        Element el = new Element(row, col);
+                        AddCandidatesToElement(el);
+                        graph.Add(el);
+                    } else {
+                        nonEmptyElements.Add(new Element(row, col));
                     }
                 }
             }
         }
 
+        //private void AddInitialValueAndRefreshGraph(Element elementToAdd, int valueToAdd) {
+        //    Solutions.Clear();
+        //    InitialValues[elementToAdd.row, elementToAdd.col] = valueToAdd;
+        //    nonEmptyElements.Add(new Element(elementToAdd.row, elementToAdd.col));
+        //    Element? graphElementToRemove = null;
+           
+        //    // Recalculate the candidates of elements in the same row, col and subgrid
+        //    foreach (Element el in graph) {
+        //        if (el.row == elementToAdd.row && el.col == elementToAdd.col) {
+        //            graphElementToRemove = el;
+        //        } else if (elementToAdd.AffectsCandidatesForOther(el)) {
+        //            AddCandidatesToElement(el);
+        //        }
+        //    }
+
+        //    // Remove this element from the graph
+        //    if (graphElementToRemove == null) {
+        //        throw new DataMisalignedException("Expected to find a graph element for " +
+        //            $"({elementToAdd.row}, {elementToAdd.col})");
+        //    }
+        //    graph.Remove(graphElementToRemove);
+        //}
+
+        private int RemoveInitialValueAndRefreshGraph(Element elementToRemove) {
+            Solutions.Clear();
+            int valueToRemove = InitialValues[elementToRemove.row, elementToRemove.col];
+            if (valueToRemove == 0) {
+                throw new DataMisalignedException("No initial value to remove at " +
+                    $"({elementToRemove.row}, {elementToRemove.col})");
+            }
+
+            // Remove the initial value
+            InitialValues[elementToRemove.row, elementToRemove.col] = 0;
+            nonEmptyElements.Remove(elementToRemove);
+
+            // Recalculate the candidates of elements in the same row, col and subgrid
+            foreach (Element el in graph) {
+                if (elementToRemove.AffectsCandidatesForOther(el)) {
+                    AddCandidatesToElement(el);
+                }
+            }
+
+            // Add a new graph element for the newly blank cell
+            AddCandidatesToElement(elementToRemove);
+            graph.Add(elementToRemove);
+            return valueToRemove;
+        }
+
+        private void AddCandidatesToElement(Element element) {
+            element.Candidates.Clear();
+            for (int num = 1; num <= SUDOKU_ROWS_COLS; num++) {
+                if (IsSafe(InitialValues, element, num)) {
+                    element.Candidates.Add(num);
+                }
+            }
+        }
+
+        /*
+         * Writes to both Console and Debug
+         */
+        private static void DualWrite(String str) {
+            Console.Write(str);
+            Debug.Write(str);
+        }
+        
         public static void PrintValues(int[,] grid) {
             for (int i = 0; i < grid.GetLength(0); i++) {
                 for (int j = 0; j < grid.GetLength(1); j++) {
-                    Debug.Write(grid[i, j] + " ");
+                    DualWrite(grid[i, j] + " ");
                 }
-                Debug.WriteLine("");
+                DualWrite("\n");
             }
-            Debug.WriteLine("");
+            DualWrite("\n");
         }
 
         public bool CheckValuesEqual(int[,] comparisonValues, int solutionNumber) {
