@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Generic;
+using System.Diagnostics;
 namespace Sudoku.Models {
 
 	public class Grid {
@@ -24,6 +25,23 @@ namespace Sudoku.Models {
             InitialValues = initialValues;
             workingValues = (int[,])initialValues.Clone();
             InitializeGraph();
+        }
+
+        public Grid(int[,] initialValues, List<int[,]> solutions, int[,] workingValues, List<Element> graph, List<Element> nonEmptyElements) {
+            this.InitialValues = initialValues;
+            this.Solutions = solutions;
+            this.workingValues = workingValues;
+            this.graph = graph;
+            this.nonEmptyElements = nonEmptyElements;
+        }
+
+        public Grid Clone() {
+            return new Grid(
+                (int[,])this.InitialValues.Clone(),
+                new List<int[,]>(this.Solutions),
+                (int[,])this.workingValues.Clone(),
+                new List<Element>(this.graph),
+                new List<Element>(this.nonEmptyElements));
         }
 
         /*
@@ -63,26 +81,18 @@ namespace Sudoku.Models {
          */
         public static Grid GenerateRandomUniqueSparse() {
             Grid grid = GenerateRandomFilled();
-            int valueRemoved = 0;
-            Element randomNonEmptyElement = new(0, 0);
-            Grid lastWithSingleSolution = new((int[,])grid.InitialValues.Clone());
-            DualWrite($"\n{grid.Solutions.Count.ToString()}\n");
+            Element randomNonEmptyElement = null;
+            Grid previousGrid = null;
+
+            // Remove random filled cells until the solution stops being unique
             while (grid.Solutions.Count == 1) {
-                lastWithSingleSolution = new((int[,])grid.InitialValues.Clone());
-                // Remove random filled cells until the solution stops being unique
+                previousGrid = grid.Clone();
+                PrintValues(grid.InitialValues);
                 randomNonEmptyElement = grid.nonEmptyElements.ElementAt(RANDOM_NUMBER_GENERATOR.Next(0, grid.nonEmptyElements.Count));
-                valueRemoved = grid.RemoveInitialValueAndRefreshGraph(randomNonEmptyElement);
-                //grid.InitializeGraph();
+                grid.RemoveInitialValueAndRefresh(randomNonEmptyElement);
                 grid.Solve();
-                DualWrite(grid.Solutions.Count.ToString());
             }
-            // As soon the solutions count exceeds 1, undo the last removal
-            //grid.AddInitialValueAndRefreshGraph(randomNonEmptyElement, valueRemoved);
-            //grid.InitializeGraph();
-            //grid.Solve();
-            //return grid;
-            lastWithSingleSolution.Solve();
-            return lastWithSingleSolution;
+            return previousGrid;
         }
 
         public bool IsSolved(int solutionNumber) { 
@@ -191,33 +201,10 @@ namespace Sudoku.Models {
             }
         }
 
-        //private void AddInitialValueAndRefreshGraph(Element elementToAdd, int valueToAdd) {
-        //    Solutions.Clear();
-        //    InitialValues[elementToAdd.row, elementToAdd.col] = valueToAdd;
-        //    nonEmptyElements.Add(new Element(elementToAdd.row, elementToAdd.col));
-        //    Element? graphElementToRemove = null;
-           
-        //    // Recalculate the candidates of elements in the same row, col and subgrid
-        //    foreach (Element el in graph) {
-        //        if (el.row == elementToAdd.row && el.col == elementToAdd.col) {
-        //            graphElementToRemove = el;
-        //        } else if (elementToAdd.AffectsCandidatesForOther(el)) {
-        //            AddCandidatesToElement(el);
-        //        }
-        //    }
-
-        //    // Remove this element from the graph
-        //    if (graphElementToRemove == null) {
-        //        throw new DataMisalignedException("Expected to find a graph element for " +
-        //            $"({elementToAdd.row}, {elementToAdd.col})");
-        //    }
-        //    graph.Remove(graphElementToRemove);
-        //}
-
-        private int RemoveInitialValueAndRefreshGraph(Element elementToRemove) {
+        private void RemoveInitialValueAndRefresh(Element elementToRemove) {
             Solutions.Clear();
-            int valueToRemove = InitialValues[elementToRemove.row, elementToRemove.col];
-            if (valueToRemove == 0) {
+
+            if (InitialValues[elementToRemove.row, elementToRemove.col] == 0) {
                 throw new DataMisalignedException("No initial value to remove at " +
                     $"({elementToRemove.row}, {elementToRemove.col})");
             }
@@ -236,7 +223,8 @@ namespace Sudoku.Models {
             // Add a new graph element for the newly blank cell
             AddCandidatesToElement(elementToRemove);
             graph.Add(elementToRemove);
-            return valueToRemove;
+            
+            Solve();
         }
 
         private void AddCandidatesToElement(Element element) {
@@ -255,15 +243,23 @@ namespace Sudoku.Models {
             Console.Write(str);
             Debug.Write(str);
         }
-        
+
+        private static void DualWriteNewline(String str) {
+            DualWrite(str + "\n");
+        }
+
+        private static void DualWriteNewline() {
+            DualWrite("\n");
+        }
+
         public static void PrintValues(int[,] grid) {
             for (int i = 0; i < grid.GetLength(0); i++) {
                 for (int j = 0; j < grid.GetLength(1); j++) {
                     DualWrite(grid[i, j] + " ");
                 }
-                DualWrite("\n");
+                DualWriteNewline();
             }
-            DualWrite("\n");
+            DualWriteNewline();
         }
 
         public bool CheckValuesEqual(int[,] comparisonValues, int solutionNumber) {
