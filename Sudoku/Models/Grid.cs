@@ -1,7 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
-namespace Sudoku.Models {
+﻿namespace Sudoku.Models {
 
+    // TODO: implements IClonable
 	public class Grid {
         public static readonly int SUDOKU_ROWS_COLS = 9;
 
@@ -19,12 +18,12 @@ namespace Sudoku.Models {
 
         private List<Element> graph = new();
 
-        public List<Element> nonEmptyElements = new();
+        public List<Element> initiallyNonEmptyElements = new();
 
         public Grid(int[,] initialValues) {
             InitialValues = initialValues;
             workingValues = (int[,])initialValues.Clone();
-            InitializeGraph();
+            Initialize();
         }
 
         public Grid(int[,] initialValues, List<int[,]> solutions, int[,] workingValues, List<Element> graph, List<Element> nonEmptyElements) {
@@ -32,7 +31,7 @@ namespace Sudoku.Models {
             this.Solutions = solutions;
             this.workingValues = workingValues;
             this.graph = graph;
-            this.nonEmptyElements = nonEmptyElements;
+            this.initiallyNonEmptyElements = nonEmptyElements;
         }
 
         public Grid Clone() {
@@ -41,11 +40,12 @@ namespace Sudoku.Models {
                 new List<int[,]>(this.Solutions),
                 (int[,])this.workingValues.Clone(),
                 new List<Element>(this.graph),
-                new List<Element>(this.nonEmptyElements));
+                new List<Element>(this.initiallyNonEmptyElements));
         }
 
         /*
-         * 
+         * Generate a random completely filled grid based on a random initial row + column solved using 
+         * the backtracking solver (deterministic based on the initial values).
          */
         public static Grid GenerateRandomFilled() {
 
@@ -77,20 +77,25 @@ namespace Sudoku.Models {
         }
 
         /*
-         * 
+         * Generate a random new puzzle with a unique solution. Typically gives a puzzle with between ~20 and ~50 empty cells;
+         * indicative of the difficulty of the problem.
+         * Plotted a histogram of 400 initially empty cell counts(81 - initiallyNonEmptyElements)
+         * and propose the following difficulty cutoffs:
+         * Very easy : <= 25 empty
+         * Easy      : 25 < empty <= 30
+         * Medium    : 30 < empty <= 40
+         * Hard      : 40 < empty <= 45
+         * Very Hard : > 45 empty
          */
         public static Grid GenerateRandomUniqueSparse() {
             Grid grid = GenerateRandomFilled();
-            Element randomNonEmptyElement = null;
-            Grid previousGrid = null;
 
             // Remove random filled cells until the solution stops being unique
+            Grid previousGrid = grid.Clone();
             while (grid.Solutions.Count == 1) {
                 previousGrid = grid.Clone();
-                PrintValues(grid.InitialValues);
-                randomNonEmptyElement = grid.nonEmptyElements.ElementAt(RANDOM_NUMBER_GENERATOR.Next(0, grid.nonEmptyElements.Count));
+                Element randomNonEmptyElement = grid.initiallyNonEmptyElements.ElementAt(RANDOM_NUMBER_GENERATOR.Next(0, grid.initiallyNonEmptyElements.Count));
                 grid.RemoveInitialValueAndRefresh(randomNonEmptyElement);
-                grid.Solve();
             }
             return previousGrid;
         }
@@ -124,6 +129,7 @@ namespace Sudoku.Models {
             return true;
         }
 
+        // TODO: refactor to Element class
         private static bool IsSafe(int[,] grid, Element element, int num) {
             if (num == 0) return false;
             if (num < 0 || num > 9) {
@@ -173,9 +179,9 @@ namespace Sudoku.Models {
                     workingValues[el.row, el.col] = num;
                     graph.RemoveAt(graph.Count - 1);
                     Element newNonEmptyElement = new Element(el.row, el.col);
-                    nonEmptyElements.Add(newNonEmptyElement);
+                    //nonEmptyElements.Add(newNonEmptyElement);
                     if (Solve(maxSolutions)) return true;
-                    nonEmptyElements.Remove(newNonEmptyElement);
+                    //nonEmptyElements.Remove(newNonEmptyElement);
                     graph.Add(el);
                     graph.Sort((Element a, Element b) => b.Candidates.Count - a.Candidates.Count);
                     workingValues[el.row, el.col] = 0;
@@ -184,22 +190,24 @@ namespace Sudoku.Models {
             return false;
         }
 
-        private void InitializeGraph() {
+        public void Initialize() {
             Solutions.Clear();
             graph.Clear();
-            nonEmptyElements.Clear();
+            initiallyNonEmptyElements.Clear();
+            workingValues = InitialValues;
             for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
                 for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
                     if (InitialValues[row, col] == 0) {
                         Element el = new Element(row, col);
-                        AddCandidatesToElement(el);
+                        RefreshCandidates(el);
                         graph.Add(el);
                     } else {
-                        nonEmptyElements.Add(new Element(row, col));
+                        initiallyNonEmptyElements.Add(new Element(row, col));
                     }
                 }
             }
         }
+
 
         private void RemoveInitialValueAndRefresh(Element elementToRemove) {
             Solutions.Clear();
@@ -211,23 +219,26 @@ namespace Sudoku.Models {
 
             // Remove the initial value
             InitialValues[elementToRemove.row, elementToRemove.col] = 0;
-            nonEmptyElements.Remove(elementToRemove);
+            initiallyNonEmptyElements.Remove(elementToRemove);
 
             // Recalculate the candidates of elements in the same row, col and subgrid
             foreach (Element el in graph) {
                 if (elementToRemove.AffectsCandidatesForOther(el)) {
-                    AddCandidatesToElement(el);
+                    RefreshCandidates(el);
                 }
             }
 
             // Add a new graph element for the newly blank cell
-            AddCandidatesToElement(elementToRemove);
+            RefreshCandidates(elementToRemove);
             graph.Add(elementToRemove);
             
             Solve();
         }
 
-        private void AddCandidatesToElement(Element element) {
+        /* TODO: refactor to Element class
+         * Add the candidates to an element given the InitialValues grid.
+         */
+        private void RefreshCandidates(Element element) {
             element.Candidates.Clear();
             for (int num = 1; num <= SUDOKU_ROWS_COLS; num++) {
                 if (IsSafe(InitialValues, element, num)) {
@@ -236,45 +247,6 @@ namespace Sudoku.Models {
             }
         }
 
-        /*
-         * Writes to both Console and Debug
-         */
-        private static void DualWrite(String str) {
-            Console.Write(str);
-            Debug.Write(str);
-        }
-
-        private static void DualWriteNewline(String str) {
-            DualWrite(str + "\n");
-        }
-
-        private static void DualWriteNewline() {
-            DualWrite("\n");
-        }
-
-        public static void PrintValues(int[,] grid) {
-            for (int i = 0; i < grid.GetLength(0); i++) {
-                for (int j = 0; j < grid.GetLength(1); j++) {
-                    DualWrite(grid[i, j] + " ");
-                }
-                DualWriteNewline();
-            }
-            DualWriteNewline();
-        }
-
-        public bool CheckValuesEqual(int[,] comparisonValues, int solutionNumber) {
-            if (Solutions[solutionNumber].Rank != comparisonValues.Rank ||
-                Solutions[solutionNumber].GetLength(0) != comparisonValues.GetLength(0) ||
-                Solutions[solutionNumber].GetLength(1) != comparisonValues.GetLength(1)) {
-                return false;
-            }
-            for (int i = 0; i < Solutions[solutionNumber].GetLength(0); i++) {
-                for (int j = 0; j < Solutions[solutionNumber].GetLength(1); j++) {
-                    if (Solutions[solutionNumber][i, j] != comparisonValues[i, j]) return false;
-                }
-            }
-            return true;
-        }
 	}
 }
 

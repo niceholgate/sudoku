@@ -1,5 +1,6 @@
 ﻿namespace SudokuTests;
 
+using System.Diagnostics;
 using System.Linq;
 using Sudoku.Models;
 
@@ -19,11 +20,11 @@ public class GridTests {
                          { 6, 9, 2, 3, 5, 1, 8, 7, 4 },
                          { 7, 4, 5, 2, 8, 6, 3, 1, 9 } };
 
-        Grid grid = new Grid(expectedSolution);
+        Grid grid = new(expectedSolution);
         grid.Solve();
         Assert.AreEqual(grid.Solutions.Count, 1);
         Assert.IsTrue(grid.IsSolved(0));
-        Assert.IsTrue(grid.CheckValuesEqual(expectedSolution, 0));
+        Assert.IsTrue(Utils.CheckGridEquivalence(expectedSolution, grid.Solutions[0]));
     } 
 
     [TestMethod]
@@ -50,12 +51,12 @@ public class GridTests {
                          { 6, 9, 2, 3, 5, 1, 8, 7, 4 },
                          { 7, 4, 5, 2, 8, 6, 3, 1, 9 } };
 
-        Grid grid = new Grid(initialValues);
+        Grid grid = new(initialValues);
         grid.Solve();
 
         Assert.AreEqual(grid.Solutions.Count, 1);
         Assert.IsTrue(grid.IsSolved(0));
-        Assert.IsTrue(grid.CheckValuesEqual(expectedSolution, 0));
+        Assert.IsTrue(Utils.CheckGridEquivalence(expectedSolution, grid.Solutions[0]));
     }
 
     [TestMethod]
@@ -84,12 +85,12 @@ public class GridTests {
                         { 2, 6, 4, 3, 5, 1, 8, 9, 7 },
                         { 7, 9, 5, 2, 8, 6, 3, 1, 4 } };
 
-        Grid grid = new Grid(initialValues);
+        Grid grid = new(initialValues);
         grid.Solve();
 
         Assert.AreEqual(grid.Solutions.Count, 6);
         Assert.IsTrue(Enumerable.Range(0, grid.Solutions.Count).Select(grid.IsSolved).All(x => x == true));
-        Assert.AreEqual(Enumerable.Range(0, grid.Solutions.Count).Select(i => grid.CheckValuesEqual(expectedSolution, i)).Count(x => x == true), 1);
+        Assert.AreEqual(Enumerable.Range(0, grid.Solutions.Count).Select(i => Utils.CheckGridEquivalence(expectedSolution, grid.Solutions[i])).Count(x => x == true), 1);
     }
 
     // Print any grid
@@ -108,17 +109,18 @@ public class GridTests {
     public void TestGenerateRandomFilled() {
         List<Grid> randomGrids = Enumerable.Range(0, 10).Select(x => Grid.GenerateRandomFilled()).ToList();
         foreach (Grid grid in randomGrids) {
-            Assert.AreEqual(grid.Solutions.Count, 1);
+            Assert.AreEqual(1, grid.Solutions.Count);
             Assert.IsTrue(grid.IsSolved(0));
         }
     }
 
     [TestMethod]
-    public void TestInvestigateDistOfBlankSquaresForMostSparseUniqueSoln() {
-        List<Grid> randomGrids = Enumerable.Range(0, 10).Select(x => Grid.GenerateRandomUniqueSparse()).ToList();
+    public void TestGenerateRandomUniqueSparse() {
+        List<Grid> randomGrids = Enumerable.Range(0, 5).Select(x => Grid.GenerateRandomUniqueSparse()).ToList();
         foreach (Grid grid in randomGrids) {
-            Assert.IsTrue(grid.nonEmptyElements.Count > 0);
+            Assert.IsTrue(grid.initiallyNonEmptyElements.Count > 0);
             Assert.AreEqual(1, grid.Solutions.Count);
+            Assert.IsTrue(grid.IsSolved(0));
         }
     }
 }
