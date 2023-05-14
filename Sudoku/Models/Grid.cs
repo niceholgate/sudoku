@@ -109,7 +109,8 @@
 
         private static bool IsColumnSafe(int col, int[,] grid) {
             for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
-                if (!IsSafe(grid, new Element(row, col), grid[row, col])) {
+                Element el = new(row, col);
+                if (!el.IsSafe(grid, grid[row, col])) {
                     return false;
                 }
             }
@@ -122,34 +123,11 @@
                 throw new ArgumentException($"Must specify a column third from within {validThirds}");
             }
             for (int row = colThird*3; row <= colThird*3 + 2; row++) {
-                if (!IsSafe(grid, new Element(row, col), grid[row, col])) {
+                Element el = new(row, col);
+                if (!el.IsSafe(grid, grid[row, col])) {
                     return false;
                 }
             }
-            return true;
-        }
-
-        // TODO: refactor to Element class
-        private static bool IsSafe(int[,] grid, Element element, int num) {
-            if (num == 0) return false;
-            if (num < 0 || num > 9) {
-                throw new ArgumentOutOfRangeException($"Illegal Sudoku value: {num}");
-            };
-            int row = element.row, col = element.col;
-
-            for (int i = 0; i < SUDOKU_ROWS_COLS; i++) {
-                if (i != col && grid[row, i] == num) return false;
-                if (i != row && grid[i, col] == num) return false;
-            }
-
-            int startRow = row - row % SUDOKU_SUBGRID;
-            int startCol = col - col % SUDOKU_SUBGRID;
-            for (int i = startRow; i < startRow + SUDOKU_SUBGRID; i++) {
-                for (int j = startCol; j < startCol + SUDOKU_SUBGRID; j++) {
-                    if (grid[i, j] == num && !(i == row && j == col)) return false;
-                }
-            }
-
             return true;
         }
 
@@ -175,7 +153,7 @@
 
             for (int i = 0; i < el.Candidates.Count; ++i) { // i++ ?
                 int num = el.Candidates.ElementAt(i);
-                if (IsSafe(workingValues, el, num)) {
+                if (el.IsSafe(workingValues, num)) {
                     workingValues[el.row, el.col] = num;
                     graph.RemoveAt(graph.Count - 1);
                     Element newNonEmptyElement = new Element(el.row, el.col);
@@ -199,7 +177,7 @@
                 for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
                     if (InitialValues[row, col] == 0) {
                         Element el = new Element(row, col);
-                        RefreshCandidates(el);
+                        el.RefreshCandidates(InitialValues);
                         graph.Add(el);
                     } else {
                         initiallyNonEmptyElements.Add(new Element(row, col));
@@ -207,7 +185,6 @@
                 }
             }
         }
-
 
         private void RemoveInitialValueAndRefresh(Element elementToRemove) {
             Solutions.Clear();
@@ -224,27 +201,15 @@
             // Recalculate the candidates of elements in the same row, col and subgrid
             foreach (Element el in graph) {
                 if (elementToRemove.AffectsCandidatesForOther(el)) {
-                    RefreshCandidates(el);
+                    el.RefreshCandidates(InitialValues);
                 }
             }
 
             // Add a new graph element for the newly blank cell
-            RefreshCandidates(elementToRemove);
+            elementToRemove.RefreshCandidates(InitialValues);
             graph.Add(elementToRemove);
             
             Solve();
-        }
-
-        /* TODO: refactor to Element class
-         * Add the candidates to an element given the InitialValues grid.
-         */
-        private void RefreshCandidates(Element element) {
-            element.Candidates.Clear();
-            for (int num = 1; num <= SUDOKU_ROWS_COLS; num++) {
-                if (IsSafe(InitialValues, element, num)) {
-                    element.Candidates.Add(num);
-                }
-            }
         }
 
 	}
