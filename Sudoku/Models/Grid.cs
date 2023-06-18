@@ -8,8 +8,6 @@
 
         public static readonly int MAX_SOLUTIONS_LIMIT = 500;
 
-        private static Random RANDOM_NUMBER_GENERATOR = new Random();
-
         public int[,] InitialValues { get; }
 
         public List<int[,]> Solutions { get; } = new List<int[,]>();
@@ -52,17 +50,17 @@
             int[,] values = new int[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
 
             // Create a random row and insert it randomly
-            int[] randomRow = Enumerable.Range(1, 9).OrderBy(a => RANDOM_NUMBER_GENERATOR.Next()).ToArray();
-            int randomRowIndex = RANDOM_NUMBER_GENERATOR.Next(0, 9);
+            int[] randomRow = Utils<int>.ShuffleToArray(Enumerable.Range(1, 9));
+            int randomRowIndex = Utils<int>.RANDOM_NUMBER_GENERATOR.Next(0, 9);
             for (int i = 0; i < 9; i++) {
                 values[randomRowIndex, i] = randomRow[i];
             }
 
             // Add a random column - must shuffle it until it fits with existing row
-            int randomColIndex = RANDOM_NUMBER_GENERATOR.Next(0, 9);
+            int randomColIndex = Utils<int>.RANDOM_NUMBER_GENERATOR.Next(0, 9);
             int[] randomCol;
             while (!IsColumnThirdSafe(randomColIndex, randomRowIndex / 3, values)) {
-                randomCol = Enumerable.Range(1, 9).OrderBy(a => RANDOM_NUMBER_GENERATOR.Next()).ToArray();
+                randomCol = Utils<int>.ShuffleToArray(Enumerable.Range(1, 9));
                 for (int j = 0; j < 9; j++) {
                     values[j, randomColIndex] = randomCol[j];
                 }
@@ -94,15 +92,15 @@
             Grid previousGrid = grid.Clone();
             while (grid.Solutions.Count == 1) {
                 previousGrid = grid.Clone();
-                Element randomNonEmptyElement = grid.initiallyNonEmptyElements.ElementAt(RANDOM_NUMBER_GENERATOR.Next(0, grid.initiallyNonEmptyElements.Count));
+                Element randomNonEmptyElement = Utils<Element>.SelectRandomElement(grid.initiallyNonEmptyElements);
                 grid.RemoveInitialValueAndRefresh(randomNonEmptyElement);
             }
             return previousGrid;
         }
 
-        public bool IsSolved(int solutionNumber) { 
+        public static bool IsSolved(int[,] grid) { 
             for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
-                if (!IsColumnSafe(col, Solutions[solutionNumber])) return false;
+                if (!IsColumnSafe(col, grid)) return false;
             }
             return true;
         }
@@ -124,9 +122,7 @@
             }
             for (int row = colThird*3; row <= colThird*3 + 2; row++) {
                 Element el = new(row, col);
-                if (!el.IsSafe(grid, grid[row, col])) {
-                    return false;
-                }
+                if (!el.IsSafe(grid, grid[row, col])) return false;
             }
             return true;
         }
@@ -156,10 +152,8 @@
                 if (el.IsSafe(workingValues, num)) {
                     workingValues[el.row, el.col] = num;
                     graph.RemoveAt(graph.Count - 1);
-                    Element newNonEmptyElement = new Element(el.row, el.col);
-                    //nonEmptyElements.Add(newNonEmptyElement);
+                    Element newNonEmptyElement = new(el.row, el.col);
                     if (Solve(maxSolutions)) return true;
-                    //nonEmptyElements.Remove(newNonEmptyElement);
                     graph.Add(el);
                     graph.Sort((Element a, Element b) => b.Candidates.Count - a.Candidates.Count);
                     workingValues[el.row, el.col] = 0;

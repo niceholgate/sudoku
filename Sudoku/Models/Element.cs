@@ -21,22 +21,22 @@ namespace Sudoku.Models {
 			Candidates = new List<int>();
         }
 
-        public bool IsSafe(int[,] grid, int num) {
-            if (num == 0) return false;
-            if (num < 0 || num > 9) {
-                throw new ArgumentOutOfRangeException($"Illegal Sudoku value: {num}");
+        public bool IsSafe(int[,] existingGrid, int candidate) {
+            if (candidate == 0) return false;
+            if (candidate < 0 || candidate > 9) {
+                throw new ArgumentOutOfRangeException($"Illegal Sudoku value: {candidate}");
             };
 
             for (int i = 0; i < Grid.SUDOKU_ROWS_COLS; i++) {
-                if (i != col && grid[row, i] == num) return false;
-                if (i != row && grid[i, col] == num) return false;
+                if (i != col && existingGrid[row, i] == candidate) return false;
+                if (i != row && existingGrid[i, col] == candidate) return false;
             }
 
             int startRow = row - row % Grid.SUDOKU_SUBGRID;
             int startCol = col - col % Grid.SUDOKU_SUBGRID;
             for (int i = startRow; i < startRow + Grid.SUDOKU_SUBGRID; i++) {
                 for (int j = startCol; j < startCol + Grid.SUDOKU_SUBGRID; j++) {
-                    if (grid[i, j] == num && !(i == row && j == col)) return false;
+                    if (existingGrid[i, j] == candidate && !(i == row && j == col)) return false;
                 }
             }
 

@@ -2,7 +2,9 @@ using System.Diagnostics;
 
 namespace Sudoku.Models {
 
-    public static class Utils { 
+    public static class Utils<T> {
+
+        public static Random RANDOM_NUMBER_GENERATOR = new Random();
 
         /*
         * Writes to both Console and Debug.
@@ -48,5 +50,14 @@ namespace Sudoku.Models {
 
             return true;
         }
+
+        public static T[] ShuffleToArray(IEnumerable<T> enumerable) {
+            return enumerable.OrderBy(a => RANDOM_NUMBER_GENERATOR.Next()).ToArray();
+        }
+
+        public static T SelectRandomElement(IEnumerable<T> enumerable) {
+            return enumerable.ElementAt(RANDOM_NUMBER_GENERATOR.Next(0, enumerable.Count<T>()));
+        }
+
     }
 }
