@@ -1,4 +1,4 @@
-﻿using System.Xml.Linq;
+﻿
 
 namespace Sudoku.Models {
 	public class Element {
@@ -12,6 +12,9 @@ namespace Sudoku.Models {
 
         public List<int> Candidates { get; }
 
+        public int finalValue = 0;
+
+        // Constructor when element is unsolved
 		public Element(int row, int col) {
 			if (row < 0 || row > 8 || col < 0 || col > 8) {
 				throw new ArgumentOutOfRangeException($"Illegal row or col value: ({row}, {col})");
@@ -21,22 +24,38 @@ namespace Sudoku.Models {
 			Candidates = new List<int>();
         }
 
-        public bool IsSafe(int[,] existingGrid, int candidate) {
+        // Constructor when element is solved
+        public Element(int row, int col, int finalValue) {
+            if (row < 0 || row > 8 || col < 0 || col > 8) {
+                throw new ArgumentOutOfRangeException($"Illegal row or col value: ({row}, {col})");
+            }
+            this.row = row;
+            this.col = col;
+            this.finalValue = finalValue;
+            Candidates = new List<int>();
+        }
+
+
+        public bool IsSafe(Element[,] gridElements) {
+            return IsSafe(gridElements, finalValue);
+        }
+
+        public bool IsSafe(Element[,] gridElements, int candidate) {
             if (candidate == 0) return false;
             if (candidate < 0 || candidate > 9) {
                 throw new ArgumentOutOfRangeException($"Illegal Sudoku value: {candidate}");
             };
 
             for (int i = 0; i < Grid.SUDOKU_ROWS_COLS; i++) {
-                if (i != col && existingGrid[row, i] == candidate) return false;
-                if (i != row && existingGrid[i, col] == candidate) return false;
+                if (i != col && gridElements[row, i].finalValue == candidate) return false;
+                if (i != row && gridElements[i, col].finalValue == candidate) return false;
             }
 
             int startRow = row - row % Grid.SUDOKU_SUBGRID;
             int startCol = col - col % Grid.SUDOKU_SUBGRID;
             for (int i = startRow; i < startRow + Grid.SUDOKU_SUBGRID; i++) {
                 for (int j = startCol; j < startCol + Grid.SUDOKU_SUBGRID; j++) {
-                    if (existingGrid[i, j] == candidate && !(i == row && j == col)) return false;
+                    if (gridElements[i, j].finalValue == candidate && !(i == row && j == col)) return false;
                 }
             }
 

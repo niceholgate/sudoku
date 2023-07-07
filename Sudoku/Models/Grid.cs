@@ -12,7 +12,7 @@
 
         public List<int[,]> Solutions { get; } = new List<int[,]>();
 
-        private int[,] workingValues = new int[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
+        private Element[,] workingValues = new Element[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
 
         private List<Element> graph = new();
 
@@ -20,11 +20,10 @@
 
         public Grid(int[,] initialValues) {
             InitialValues = initialValues;
-            workingValues = (int[,])initialValues.Clone();
             Initialize();
         }
 
-        public Grid(int[,] initialValues, List<int[,]> solutions, int[,] workingValues, List<Element> graph, List<Element> nonEmptyElements) {
+        public Grid(int[,] initialValues, List<int[,]> solutions, Element[,] workingValues, List<Element> graph, List<Element> nonEmptyElements) {
             this.InitialValues = initialValues;
             this.Solutions = solutions;
             this.workingValues = workingValues;
@@ -36,7 +35,7 @@
             return new Grid(
                 (int[,])this.InitialValues.Clone(),
                 new List<int[,]>(this.Solutions),
-                (int[,])this.workingValues.Clone(),
+                (Element[,])this.workingValues.Clone(),
                 new List<Element>(this.graph),
                 new List<Element>(this.initiallyNonEmptyElements));
         }
@@ -56,20 +55,27 @@
                 values[randomRowIndex, i] = randomRow[i];
             }
 
-            // Add a random column - must shuffle it until it fits with existing row
-            int randomColIndex = Utils<int>.RANDOM_NUMBER_GENERATOR.Next(0, 9);
-            int[] randomCol;
-            while (!IsColumnThirdSafe(randomColIndex, randomRowIndex / 3, values)) {
-                randomCol = Utils<int>.ShuffleToArray(Enumerable.Range(1, 9));
-                for (int j = 0; j < 9; j++) {
-                    values[j, randomColIndex] = randomCol[j];
+            Element[,] elementGrid = new Element[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
+            for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
+                for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
+                    elementGrid[row, col] = new Element(row, col, values[row, col]);
                 }
             }
 
-            Grid grid = new(values);
+            // Add a random column - must shuffle it until it fits with existing row
+            int randomColIndex = Utils<int>.RANDOM_NUMBER_GENERATOR.Next(0, 9);
+            int[] randomCol;
+            while (!IsColumnThirdSafe(randomColIndex, randomRowIndex / 3, elementGrid)) {
+                randomCol = Utils<int>.ShuffleToArray(Enumerable.Range(1, 9));
+                for (int j = 0; j < 9; j++) {
+                    elementGrid[j, randomColIndex].finalValue = randomCol[j];
+                }
+            }
+
+            Grid grid = new(elementGrid);
             grid.Solve(1);
             // Creating yet another grid is a hack to replace the initial values with the solution
-            Grid finalGrid = new Grid((int[,])grid.workingValues.Clone());
+            Grid finalGrid = new((int[,])grid.workingValues.Clone());
             finalGrid.Solve(1);
             return finalGrid;
         }
@@ -98,31 +104,22 @@
             return previousGrid;
         }
 
-        public static bool IsSolved(int[,] grid) { 
-            for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
-                if (!IsColumnSafe(col, grid)) return false;
-            }
-            return true;
-        }
-
-        private static bool IsColumnSafe(int col, int[,] grid) {
+        public static bool IsSolved(int[,] grid) {
+            Element[,] elementGrid = new Element[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
             for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
-                Element el = new(row, col);
-                if (!el.IsSafe(grid, grid[row, col])) {
-                    return false;
+                for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
+                    elementGrid[row, col] = new Element(row, col, grid[row, col]);
                 }
             }
+            for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
+                if (!IsColumnSafe(col, elementGrid)) return false;
+            }
             return true;
         }
 
-        private static bool IsColumnThirdSafe(int col, int colThird, int[,] grid) {
-            int[] validThirds = { 0, 1, 2 };
-            if (!validThirds.Contains(colThird)) {
-                throw new ArgumentException($"Must specify a column third from within {validThirds}");
-            }
-            for (int row = colThird*3; row <= colThird*3 + 2; row++) {
-                Element el = new(row, col);
-                if (!el.IsSafe(grid, grid[row, col])) return false;
+        public static bool IsSolved(Element[,] grid) { 
+            for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
+                if (!IsColumnSafe(col, grid)) return false;
             }
             return true;
         }
@@ -132,7 +129,7 @@
         }
 
         // TODO: flag if all solutions were found and added to Solutions
-        public bool Solve(int maxSolutions) {
+        private bool Solve(int maxSolutions) {
             if (maxSolutions > MAX_SOLUTIONS_LIMIT) {
                 throw new ArgumentException($"Must specify a maximum number of solutions <= {MAX_SOLUTIONS_LIMIT}");
             } 
@@ -150,31 +147,30 @@
             for (int i = 0; i < el.Candidates.Count; ++i) { // i++ ?
                 int num = el.Candidates.ElementAt(i);
                 if (el.IsSafe(workingValues, num)) {
-                    workingValues[el.row, el.col] = num;
+                    el.finalValue = num;
                     graph.RemoveAt(graph.Count - 1);
-                    Element newNonEmptyElement = new(el.row, el.col);
                     if (Solve(maxSolutions)) return true;
                     graph.Add(el);
+                    el.finalValue = 0;
                     graph.Sort((Element a, Element b) => b.Candidates.Count - a.Candidates.Count);
-                    workingValues[el.row, el.col] = 0;
                 }
             }
             return false;
         }
 
-        public void Initialize() {
+        private void Initialize() {
             Solutions.Clear();
             graph.Clear();
             initiallyNonEmptyElements.Clear();
-            workingValues = InitialValues;
             for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
                 for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
+                    Element el = new(row, col);
+                    workingValues[row, col] = el;
                     if (InitialValues[row, col] == 0) {
-                        Element el = new Element(row, col);
                         el.RefreshCandidates(InitialValues);
                         graph.Add(el);
                     } else {
-                        initiallyNonEmptyElements.Add(new Element(row, col));
+                        initiallyNonEmptyElements.Add(el);
                     }
                 }
             }
@@ -206,6 +202,32 @@
             Solve();
         }
 
-	}
+        private static bool IsColumnSafe(int col, Element[,] grid) {
+            for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
+                if (!grid[row, col].IsSafe(grid)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static bool IsColumnThirdSafe(int col, int colThird, Element[,] grid) {
+            int[] validThirds = { 0, 1, 2 };
+            if (!validThirds.Contains(colThird)) {
+                throw new ArgumentException($"Must specify a column third from within {validThirds}");
+            }
+            for (int row = colThird * 3; row <= colThird * 3 + 2; row++) {
+                if (!grid[row, col].IsSafe(grid)) return false;
+            }
+            return true;
+        }
+
+        private static int[,] ExtractFinalValuesFromElementGrid(Element[,] elementGrid) {
+            int[,] finalValues = new int[elementGrid.GetLength(0), elementGrid.GetLength(1)];
+
+        }
+
+        private
+    }
 }
 
