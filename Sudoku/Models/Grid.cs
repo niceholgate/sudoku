@@ -8,23 +8,26 @@
 
         public static readonly int MAX_SOLUTIONS_LIMIT = 500;
 
-        public int[,] InitialValues { get; }
+        public Element[,] InitialValues { get; }
 
-        public List<int[,]> Solutions { get; } = new List<int[,]>();
+        // An array of Elements each with only 1 Candidate
+        public List<int[,]> Solutions { get; } = new();
 
+        // Use to look for Solutions
         private Element[,] workingValues = new Element[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
 
+        // Use to look for Solutions - refers to workingValues elements
         private List<Element> graph = new();
 
         public List<Element> initiallyNonEmptyElements = new();
 
         public Grid(int[,] initialValues) {
-            InitialValues = initialValues;
+            InitialValues = FinalValuesGridToUninitializedElementGrid(initialValues);
             Initialize();
         }
 
         public Grid(int[,] initialValues, List<int[,]> solutions, Element[,] workingValues, List<Element> graph, List<Element> nonEmptyElements) {
-            this.InitialValues = initialValues;
+            this.InitialValues = FinalValuesGridToUninitializedElementGrid(initialValues);
             this.Solutions = solutions;
             this.workingValues = workingValues;
             this.graph = graph;
@@ -33,7 +36,7 @@
 
         public Grid Clone() {
             return new Grid(
-                (int[,])this.InitialValues.Clone(),
+                ElementGridToFinalValuesGrid(this.InitialValues),
                 new List<int[,]>(this.Solutions),
                 (Element[,])this.workingValues.Clone(),
                 new List<Element>(this.graph),
@@ -51,31 +54,26 @@
             // Create a random row and insert it randomly
             int[] randomRow = Utils<int>.ShuffleToArray(Enumerable.Range(1, 9));
             int randomRowIndex = Utils<int>.RANDOM_NUMBER_GENERATOR.Next(0, 9);
-            for (int i = 0; i < 9; i++) {
-                values[randomRowIndex, i] = randomRow[i];
+            for (int col = 0; col < 9; col++) {
+                values[randomRowIndex, col] = randomRow[col];
             }
 
-            Element[,] elementGrid = new Element[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
-            for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
-                for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
-                    elementGrid[row, col] = new Element(row, col, values[row, col]);
-                }
-            }
+            Element[,] elementGrid = FinalValuesGridToUninitializedElementGrid(values);
 
             // Add a random column - must shuffle it until it fits with existing row
             int randomColIndex = Utils<int>.RANDOM_NUMBER_GENERATOR.Next(0, 9);
             int[] randomCol;
             while (!IsColumnThirdSafe(randomColIndex, randomRowIndex / 3, elementGrid)) {
                 randomCol = Utils<int>.ShuffleToArray(Enumerable.Range(1, 9));
-                for (int j = 0; j < 9; j++) {
-                    elementGrid[j, randomColIndex].finalValue = randomCol[j];
+                for (int row = 0; row < 9; row++) {
+                    elementGrid[row, randomColIndex] = new Element(row, randomColIndex, randomCol[row]);
                 }
             }
 
-            Grid grid = new(elementGrid);
+            Grid grid = new(ElementGridToFinalValuesGrid(elementGrid));
             grid.Solve(1);
             // Creating yet another grid is a hack to replace the initial values with the solution
-            Grid finalGrid = new((int[,])grid.workingValues.Clone());
+            Grid finalGrid = new(grid.Solutions[0]);
             finalGrid.Solve(1);
             return finalGrid;
         }
@@ -135,7 +133,7 @@
             } 
 
             if (graph.Count == 0) {
-                Solutions.Add((int[,])workingValues.Clone());
+                Solutions.Add(ElementGridToFinalValuesGrid(workingValues));
                 // Return false unless decide to finish because have enough solutions (or all?)
                 if (Solutions.Count >= maxSolutions) return true;
                 return false;
@@ -144,14 +142,16 @@
             graph.Sort((Element a, Element b) => b.Candidates.Count - a.Candidates.Count);
             Element el = graph.ElementAt(graph.Count - 1);
 
-            for (int i = 0; i < el.Candidates.Count; ++i) { // i++ ?
+
+            List<int> oldCandidates = new List<int>(el.Candidates);
+            for (int i = 0; i < oldCandidates.Count; ++i) { // TODO: i++ ?
                 int num = el.Candidates.ElementAt(i);
                 if (el.IsSafe(workingValues, num)) {
-                    el.finalValue = num;
+                    el.Candidates = new List<int>(){ num };
                     graph.RemoveAt(graph.Count - 1);
                     if (Solve(maxSolutions)) return true;
                     graph.Add(el);
-                    el.finalValue = 0;
+                    el.Candidates = oldCandidates;
                     graph.Sort((Element a, Element b) => b.Candidates.Count - a.Candidates.Count);
                 }
             }
@@ -164,9 +164,9 @@
             initiallyNonEmptyElements.Clear();
             for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
                 for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
-                    Element el = new(row, col);
+                    Element el = new(row, col, InitialValues[row, col].FinalValue);
                     workingValues[row, col] = el;
-                    if (InitialValues[row, col] == 0) {
+                    if (el.FinalValue == 0) {
                         el.RefreshCandidates(InitialValues);
                         graph.Add(el);
                     } else {
@@ -179,13 +179,14 @@
         private void RemoveInitialValueAndRefresh(Element elementToRemove) {
             Solutions.Clear();
 
-            if (InitialValues[elementToRemove.row, elementToRemove.col] == 0) {
+            if (InitialValues[elementToRemove.row, elementToRemove.col].FinalValue == 0) {
                 throw new DataMisalignedException("No initial value to remove at " +
                     $"({elementToRemove.row}, {elementToRemove.col})");
             }
 
-            // Remove the initial value
-            InitialValues[elementToRemove.row, elementToRemove.col] = 0;
+            // Remove the initial value by giving it multiple Candidates (initial value Elements should have a single Candidate; refresh to find real candidates later)
+            // TODO: can just do the refresh here?
+            InitialValues[elementToRemove.row, elementToRemove.col].Candidates = new List<int>() { 1 , 2 };
             initiallyNonEmptyElements.Remove(elementToRemove);
 
             // Recalculate the candidates of elements in the same row, col and subgrid
@@ -204,7 +205,7 @@
 
         private static bool IsColumnSafe(int col, Element[,] grid) {
             for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
-                if (!grid[row, col].IsSafe(grid)) {
+                if (!grid[row, col].IsSafe(grid, grid[row, col].FinalValue)) {
                     return false;
                 }
             }
@@ -217,17 +218,31 @@
                 throw new ArgumentException($"Must specify a column third from within {validThirds}");
             }
             for (int row = colThird * 3; row <= colThird * 3 + 2; row++) {
-                if (!grid[row, col].IsSafe(grid)) return false;
+                if (!grid[row, col].IsSafe(grid, grid[row, col].FinalValue)) return false;
             }
             return true;
         }
 
-        private static int[,] ExtractFinalValuesFromElementGrid(Element[,] elementGrid) {
+        private static int[,] ElementGridToFinalValuesGrid(Element[,] elementGrid) {
             int[,] finalValues = new int[elementGrid.GetLength(0), elementGrid.GetLength(1)];
-
+            for (int row = 0; row < elementGrid.GetLength(0); row++) {
+                for (int col = 0; col < elementGrid.GetLength(1); col++) {
+                    finalValues[row, col] = elementGrid[row, col].FinalValue;
+                }
+            }
+            return finalValues;
         }
 
-        private
+        private static Element[,] FinalValuesGridToUninitializedElementGrid(int[,] finalValues) {
+            Element[,] elementGrid = new Element[finalValues.GetLength(0), finalValues.GetLength(1)];
+            for (int row = 0; row < finalValues.GetLength(0); row++) {
+                for (int col = 0; col < finalValues.GetLength(1); col++) {
+                    elementGrid[row, col] = new Element(row, col, finalValues[row, col]);
+                }
+            }
+            return elementGrid;
+        }
+
     }
 }
 

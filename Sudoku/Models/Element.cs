@@ -10,34 +10,19 @@ namespace Sudoku.Models {
 
         public int SubCol { get { return col / Grid.SUDOKU_SUBGRID; } }
 
-        public List<int> Candidates { get; }
+        public List<int> Candidates { get; set; }
 
-        public int finalValue = 0;
+        public int FinalValue { get {
+                return Candidates.Count == 1 ? Candidates.ElementAt(0) : 0; } }
 
-        // Constructor when element is unsolved
-		public Element(int row, int col) {
-			if (row < 0 || row > 8 || col < 0 || col > 8) {
-				throw new ArgumentOutOfRangeException($"Illegal row or col value: ({row}, {col})");
-			}
-			this.row = row;
-			this.col = col;
-			Candidates = new List<int>();
-        }
-
-        // Constructor when element is solved
+        // finalValue = 0 if unknown
         public Element(int row, int col, int finalValue) {
             if (row < 0 || row > 8 || col < 0 || col > 8) {
                 throw new ArgumentOutOfRangeException($"Illegal row or col value: ({row}, {col})");
             }
             this.row = row;
             this.col = col;
-            this.finalValue = finalValue;
-            Candidates = new List<int>();
-        }
-
-
-        public bool IsSafe(Element[,] gridElements) {
-            return IsSafe(gridElements, finalValue);
+            Candidates = finalValue == 0 ? new List<int>() : new List<int>() { finalValue };
         }
 
         public bool IsSafe(Element[,] gridElements, int candidate) {
@@ -46,16 +31,18 @@ namespace Sudoku.Models {
                 throw new ArgumentOutOfRangeException($"Illegal Sudoku value: {candidate}");
             };
 
+            // Check the row and column for this candidate
             for (int i = 0; i < Grid.SUDOKU_ROWS_COLS; i++) {
-                if (i != col && gridElements[row, i].finalValue == candidate) return false;
-                if (i != row && gridElements[i, col].finalValue == candidate) return false;
+                if (i != col && gridElements[row, i].FinalValue == candidate) return false;
+                if (i != row && gridElements[i, col].FinalValue == candidate) return false;
             }
 
+            // Check the subgrid for this candidate
             int startRow = row - row % Grid.SUDOKU_SUBGRID;
             int startCol = col - col % Grid.SUDOKU_SUBGRID;
             for (int i = startRow; i < startRow + Grid.SUDOKU_SUBGRID; i++) {
                 for (int j = startCol; j < startCol + Grid.SUDOKU_SUBGRID; j++) {
-                    if (gridElements[i, j].finalValue == candidate && !(i == row && j == col)) return false;
+                    if (gridElements[i, j].FinalValue == candidate && !(i == row && j == col)) return false;
                 }
             }
 
@@ -65,7 +52,7 @@ namespace Sudoku.Models {
         /*
          * Add the candidates to an element given the InitialValues grid.
          */
-        public void RefreshCandidates(int[,] initialValues) {
+        public void RefreshCandidates(Element[,] initialValues) {
             Candidates.Clear();
             for (int num = 1; num <= Grid.SUDOKU_ROWS_COLS; num++) {
                 if (IsSafe(initialValues, num)) {

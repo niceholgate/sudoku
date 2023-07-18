@@ -3,7 +3,6 @@
 using System.Linq;
 using Sudoku.Models;
 
-
 [TestClass]
 public class GridTests {
     [TestMethod]
@@ -24,7 +23,39 @@ public class GridTests {
         Assert.AreEqual(1, grid.Solutions.Count);
         Assert.IsTrue(Grid.IsSolved(grid.Solutions[0]));
         Assert.IsTrue(Utils<int>.CheckGridEquivalence(expectedSolution, grid.Solutions[0]));
-    } 
+    }
+
+    [TestMethod]
+    public void TestSolve_HappyPathTrivial() {
+        int[,] initialValues = {
+                         { 3, 1, 6, 5, 7, 8, 4, 9, 2 },
+                         { 5, 2, 9, 1, 3, 4, 7, 6, 8 },
+                         { 4, 8, 7, 6, 2, 9, 5, 3, 1 },
+                         { 2, 6, 3, 4, 1, 5, 9, 8, 7 },
+                         { 9, 7, 4, 8, 6, 3, 1, 2, 5 },
+                         { 8, 5, 1, 7, 9, 2, 6, 4, 3 },
+                         { 1, 3, 8, 9, 4, 7, 2, 5, 6 },
+                         { 6, 9, 2, 3, 5, 1, 8, 7, 4 },
+                         { 7, 4, 5, 2, 8, 6, 3, 1, 0 } };
+
+        int[,] expectedSolution = {
+                         { 3, 1, 6, 5, 7, 8, 4, 9, 2 },
+                         { 5, 2, 9, 1, 3, 4, 7, 6, 8 },
+                         { 4, 8, 7, 6, 2, 9, 5, 3, 1 },
+                         { 2, 6, 3, 4, 1, 5, 9, 8, 7 },
+                         { 9, 7, 4, 8, 6, 3, 1, 2, 5 },
+                         { 8, 5, 1, 7, 9, 2, 6, 4, 3 },
+                         { 1, 3, 8, 9, 4, 7, 2, 5, 6 },
+                         { 6, 9, 2, 3, 5, 1, 8, 7, 4 },
+                         { 7, 4, 5, 2, 8, 6, 3, 1, 9 } };
+
+        Grid grid = new(initialValues);
+        grid.Solve();
+
+        Assert.AreEqual(1, grid.Solutions.Count);
+        Assert.IsTrue(Grid.IsSolved(grid.Solutions[0]));
+        Assert.IsTrue(Utils<int>.CheckGridEquivalence(expectedSolution, grid.Solutions[0]));
+    }
 
     [TestMethod]
     public void TestSolve_HappyPathUnique() {
@@ -103,7 +134,6 @@ public class GridTests {
         Console.WriteLine();
     }
 
-
     [TestMethod]
     public void TestGenerateRandomFilled() {
         List<Grid> randomGrids = Enumerable.Range(0, 10).Select(x => Grid.GenerateRandomFilled()).ToList();
@@ -122,6 +152,17 @@ public class GridTests {
             Assert.IsTrue(Grid.IsSolved(grid.Solutions.ElementAt(0)));
         }
     }
+
+    private static int[,] ElementGridToFinalValuesGrid(Element[,] elementGrid) {
+        int[,] finalValues = new int[elementGrid.GetLength(0), elementGrid.GetLength(1)];
+        for (int row = 0; row < elementGrid.GetLength(0); row++) {
+            for (int col = 0; col < elementGrid.GetLength(1); col++) {
+                finalValues[row, col] = elementGrid[row, col].FinalValue;
+            }
+        }
+        return finalValues;
+    }
+
 }
 
 // Various initial values tests
