@@ -80,7 +80,7 @@
             // Add a random column - must shuffle it until it fits with existing row
             int randomColIndex = Utils<int>.RANDOM_NUMBER_GENERATOR.Next(0, 9);
             int[] randomCol;
-            while (!IsColumnThirdSafe(randomColIndex, randomRowIndex / 3, elementGrid)) {
+            while (!IsSubColumnSafe(randomColIndex, randomRowIndex / 3, randomRowIndex / 3 * 3 + 2, elementGrid)) {
                 randomCol = Utils<int>.ShuffleToArray(Enumerable.Range(1, 9));
                 for (int row = 0; row < 9; row++) {
                     elementGrid[row, randomColIndex] = new Element(row, randomColIndex, randomCol[row]);
@@ -119,15 +119,52 @@
             return previousGrid;
         }
 
-        // want these?
-        public static bool IsSolved(int[,] grid) {
-            Element[,] elementGrid = FinalValuesGridToUninitializedElementGrid(grid);
-            return IsSolved(elementGrid);
-        }
-
         public static bool IsSolved(Element[,] grid) { 
             for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
                 if (!IsColumnSafe(col, grid)) return false;
+            }
+            return true;
+        }
+
+        private static bool IsColumnSafe(int col, Element[,] grid) {
+            for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
+                if (!grid[row, col].IsSafe(grid)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static bool IsSubColumnSafe(int col, int rowStart, int rowEnd, Element[,] grid) {
+            for (int row = rowStart; row <= rowEnd; row++) {
+                if (!grid[row, col].IsSafe(grid)) return false;
+            }
+            return true;
+        }
+
+        private static int[,] ElementGridToFinalValuesGrid(Element[,] elementGrid) {
+            int[,] finalValues = new int[elementGrid.GetLength(0), elementGrid.GetLength(1)];
+            for (int row = 0; row < elementGrid.GetLength(0); row++) {
+                for (int col = 0; col < elementGrid.GetLength(1); col++) {
+                    finalValues[row, col] = elementGrid[row, col].FinalValue;
+                }
+            }
+            return finalValues;
+        }
+
+        private static Element[,] FinalValuesGridToUninitializedElementGrid(int[,] finalValues) {
+            Element[,] elementGrid = new Element[finalValues.GetLength(0), finalValues.GetLength(1)];
+            for (int row = 0; row < finalValues.GetLength(0); row++) {
+                for (int col = 0; col < finalValues.GetLength(1); col++) {
+                    elementGrid[row, col] = new Element(row, col, finalValues[row, col]);
+                }
+            }
+            return elementGrid;
+        }
+
+        public bool AllSolutionsValid() {
+            foreach (int[,] soln in Solutions) {
+                if (!IsSolved(FinalValuesGridToUninitializedElementGrid(soln))) return false;
             }
             return true;
         }
@@ -211,46 +248,6 @@
             graph.Add(elementToRemove);
             
             Solve();
-        }
-
-        private static bool IsColumnSafe(int col, Element[,] grid) {
-            for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
-                if (!grid[row, col].IsSafe(grid, grid[row, col].FinalValue)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private static bool IsColumnThirdSafe(int col, int colThird, Element[,] grid) {
-            int[] validThirds = { 0, 1, 2 };
-            if (!validThirds.Contains(colThird)) {
-                throw new ArgumentException($"Must specify a column third from within {validThirds}");
-            }
-            for (int row = colThird * 3; row <= colThird * 3 + 2; row++) {
-                if (!grid[row, col].IsSafe(grid, grid[row, col].FinalValue)) return false;
-            }
-            return true;
-        }
-
-        private static int[,] ElementGridToFinalValuesGrid(Element[,] elementGrid) {
-            int[,] finalValues = new int[elementGrid.GetLength(0), elementGrid.GetLength(1)];
-            for (int row = 0; row < elementGrid.GetLength(0); row++) {
-                for (int col = 0; col < elementGrid.GetLength(1); col++) {
-                    finalValues[row, col] = elementGrid[row, col].FinalValue;
-                }
-            }
-            return finalValues;
-        }
-
-        private static Element[,] FinalValuesGridToUninitializedElementGrid(int[,] finalValues) {
-            Element[,] elementGrid = new Element[finalValues.GetLength(0), finalValues.GetLength(1)];
-            for (int row = 0; row < finalValues.GetLength(0); row++) {
-                for (int col = 0; col < finalValues.GetLength(1); col++) {
-                    elementGrid[row, col] = new Element(row, col, finalValues[row, col]);
-                }
-            }
-            return elementGrid;
         }
 
     }

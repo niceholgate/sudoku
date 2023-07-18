@@ -25,6 +25,10 @@ namespace Sudoku.Models {
             Candidates = finalValue == 0 ? new List<int>() : new List<int>() { finalValue };
         }
 
+        public bool IsSafe(Element[,] gridElements) {
+            return IsSafe(gridElements, FinalValue);
+        }
+
         public bool IsSafe(Element[,] gridElements, int candidate) {
             if (candidate == 0) return false;
             if (candidate < 0 || candidate > 9) {

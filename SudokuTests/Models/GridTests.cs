@@ -21,7 +21,7 @@ public class GridTests {
         Grid grid = new(expectedSolution);
         grid.Solve();
         Assert.AreEqual(1, grid.Solutions.Count);
-        Assert.IsTrue(Grid.IsSolved(grid.Solutions[0]));
+        Assert.IsTrue(grid.AllSolutionsValid());
         Assert.IsTrue(Utils<int>.CheckGridEquivalence(expectedSolution, grid.Solutions[0]));
     }
 
@@ -53,7 +53,7 @@ public class GridTests {
         grid.Solve();
 
         Assert.AreEqual(1, grid.Solutions.Count);
-        Assert.IsTrue(Grid.IsSolved(grid.Solutions[0]));
+        Assert.IsTrue(grid.AllSolutionsValid());
         Assert.IsTrue(Utils<int>.CheckGridEquivalence(expectedSolution, grid.Solutions[0]));
     }
 
@@ -85,7 +85,7 @@ public class GridTests {
         grid.Solve();
 
         Assert.AreEqual(1, grid.Solutions.Count);
-        Assert.IsTrue(Grid.IsSolved(grid.Solutions[0]));
+        Assert.IsTrue(grid.AllSolutionsValid());
         Assert.IsTrue(Utils<int>.CheckGridEquivalence(expectedSolution, grid.Solutions[0]));
     }
 
@@ -119,7 +119,7 @@ public class GridTests {
         grid.Solve();
 
         Assert.AreEqual(grid.Solutions.Count, 6);
-        Assert.IsTrue(grid.Solutions.Select(Grid.IsSolved).All(x => x == true));
+        Assert.IsTrue(grid.AllSolutionsValid());
         Assert.AreEqual(Enumerable.Range(0, grid.Solutions.Count).Select(i => Utils<int>.CheckGridEquivalence(expectedSolution, grid.Solutions[i])).Count(x => x == true), 1);
     }
 
@@ -139,7 +139,7 @@ public class GridTests {
         List<Grid> randomGrids = Enumerable.Range(0, 10).Select(x => Grid.GenerateRandomFilled()).ToList();
         foreach (Grid grid in randomGrids) {
             Assert.AreEqual(1, grid.Solutions.Count);
-            Assert.IsTrue(Grid.IsSolved(grid.Solutions.ElementAt(0)));
+            Assert.IsTrue(grid.AllSolutionsValid());
         }
     }
 
@@ -149,18 +149,8 @@ public class GridTests {
         foreach (Grid grid in randomGrids) {
             Assert.IsTrue(grid.initiallyNonEmptyElements.Count > 0);
             Assert.AreEqual(1, grid.Solutions.Count);
-            Assert.IsTrue(Grid.IsSolved(grid.Solutions.ElementAt(0)));
+            Assert.IsTrue(grid.AllSolutionsValid());
         }
-    }
-
-    private static int[,] ElementGridToFinalValuesGrid(Element[,] elementGrid) {
-        int[,] finalValues = new int[elementGrid.GetLength(0), elementGrid.GetLength(1)];
-        for (int row = 0; row < elementGrid.GetLength(0); row++) {
-            for (int col = 0; col < elementGrid.GetLength(1); col++) {
-                finalValues[row, col] = elementGrid[row, col].FinalValue;
-            }
-        }
-        return finalValues;
     }
 
 }
