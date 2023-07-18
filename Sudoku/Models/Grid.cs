@@ -8,26 +8,43 @@
 
         public static readonly int MAX_SOLUTIONS_LIMIT = 500;
 
-        public Element[,] InitialValues { get; }
+        public Element[,] InitialElements { get; }
 
-        // An array of Elements each with only 1 Candidate
         public List<int[,]> Solutions { get; } = new();
 
-        // Use to look for Solutions
+        /*
+         * Used to look for Solutions.
+         */
         private Element[,] workingValues = new Element[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
 
-        // Use to look for Solutions - refers to workingValues elements
+        /*
+         * Used to look for Solutions - refers to workingValues elements.
+         */
         private List<Element> graph = new();
 
+        /*
+         * TODO: what is this?
+         */
         public List<Element> initiallyNonEmptyElements = new();
 
+        /*
+         * Constructors for new grid.
+         */
         public Grid(int[,] initialValues) {
-            InitialValues = FinalValuesGridToUninitializedElementGrid(initialValues);
+            InitialElements = FinalValuesGridToUninitializedElementGrid(initialValues);
             Initialize();
         }
 
+        public Grid(Element[,] initialElements) {
+            InitialElements = initialElements;
+            Initialize();
+        }
+
+        /*
+         * Constructor for cloning.
+         */
         public Grid(int[,] initialValues, List<int[,]> solutions, Element[,] workingValues, List<Element> graph, List<Element> nonEmptyElements) {
-            this.InitialValues = FinalValuesGridToUninitializedElementGrid(initialValues);
+            this.InitialElements = FinalValuesGridToUninitializedElementGrid(initialValues);
             this.Solutions = solutions;
             this.workingValues = workingValues;
             this.graph = graph;
@@ -36,7 +53,7 @@
 
         public Grid Clone() {
             return new Grid(
-                ElementGridToFinalValuesGrid(this.InitialValues),
+                ElementGridToFinalValuesGrid(this.InitialElements),
                 new List<int[,]>(this.Solutions),
                 (Element[,])this.workingValues.Clone(),
                 new List<Element>(this.graph),
@@ -81,7 +98,7 @@
         /*
          * Generate a random new puzzle with a unique solution. Typically gives a puzzle with between ~20 and ~50 empty cells;
          * indicative of the difficulty of the problem.
-         * Plotted a histogram of 400 initially empty cell counts(81 - initiallyNonEmptyElements)
+         * Plotted a histogram of 400 initially empty cell counts (81 - initiallyNonEmptyElements)
          * and propose the following difficulty cutoffs:
          * Very easy : <= 25 empty
          * Easy      : 25 < empty <= 30
@@ -102,17 +119,10 @@
             return previousGrid;
         }
 
+        // want these?
         public static bool IsSolved(int[,] grid) {
-            Element[,] elementGrid = new Element[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
-            for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
-                for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
-                    elementGrid[row, col] = new Element(row, col, grid[row, col]);
-                }
-            }
-            for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
-                if (!IsColumnSafe(col, elementGrid)) return false;
-            }
-            return true;
+            Element[,] elementGrid = FinalValuesGridToUninitializedElementGrid(grid);
+            return IsSolved(elementGrid);
         }
 
         public static bool IsSolved(Element[,] grid) { 
@@ -164,10 +174,10 @@
             initiallyNonEmptyElements.Clear();
             for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
                 for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
-                    Element el = new(row, col, InitialValues[row, col].FinalValue);
+                    Element el = new(row, col, InitialElements[row, col].FinalValue);
                     workingValues[row, col] = el;
                     if (el.FinalValue == 0) {
-                        el.RefreshCandidates(InitialValues);
+                        el.RefreshCandidates(InitialElements);
                         graph.Add(el);
                     } else {
                         initiallyNonEmptyElements.Add(el);
@@ -179,25 +189,25 @@
         private void RemoveInitialValueAndRefresh(Element elementToRemove) {
             Solutions.Clear();
 
-            if (InitialValues[elementToRemove.row, elementToRemove.col].FinalValue == 0) {
+            if (InitialElements[elementToRemove.row, elementToRemove.col].FinalValue == 0) {
                 throw new DataMisalignedException("No initial value to remove at " +
                     $"({elementToRemove.row}, {elementToRemove.col})");
             }
 
             // Remove the initial value by giving it multiple Candidates (initial value Elements should have a single Candidate; refresh to find real candidates later)
             // TODO: can just do the refresh here?
-            InitialValues[elementToRemove.row, elementToRemove.col].Candidates = new List<int>() { 1 , 2 };
+            InitialElements[elementToRemove.row, elementToRemove.col].Candidates = new List<int>() { 1 , 2 };
             initiallyNonEmptyElements.Remove(elementToRemove);
 
             // Recalculate the candidates of elements in the same row, col and subgrid
             foreach (Element el in graph) {
                 if (elementToRemove.AffectsCandidatesForOther(el)) {
-                    el.RefreshCandidates(InitialValues);
+                    el.RefreshCandidates(InitialElements);
                 }
             }
 
             // Add a new graph element for the newly blank cell
-            elementToRemove.RefreshCandidates(InitialValues);
+            elementToRemove.RefreshCandidates(InitialElements);
             graph.Add(elementToRemove);
             
             Solve();
