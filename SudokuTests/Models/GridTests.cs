@@ -147,7 +147,7 @@ public class GridTests {
     public void TestGenerateRandomUniqueSparse() {
         List<Grid> randomGrids = Enumerable.Range(0, 5).Select(x => Grid.GenerateRandomUniqueSparse()).ToList();
         foreach (Grid grid in randomGrids) {
-            Assert.IsTrue(grid.initiallyNonEmptyElements.Count > 0);
+            Assert.IsFalse(Grid.IsSolved(grid.InitialElements));
             Assert.AreEqual(1, grid.Solutions.Count);
             Assert.IsTrue(grid.AllSolutionsValid());
         }

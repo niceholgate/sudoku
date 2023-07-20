@@ -1,10 +1,11 @@
+using System.Collections.Immutable;
 using System.Diagnostics;
 
 namespace Sudoku.Models {
 
     public static class Utils<T> {
 
-        public static Random RANDOM_NUMBER_GENERATOR = new Random();
+        public static Random RANDOM_NUMBER_GENERATOR = new();
 
         /*
         * Writes to both Console and Debug.
@@ -51,8 +52,22 @@ namespace Sudoku.Models {
             return true;
         }
 
-        public static T[] ShuffleToArray(IEnumerable<T> enumerable) {
-            return enumerable.OrderBy(a => RANDOM_NUMBER_GENERATOR.Next()).ToArray();
+        //public static T[] ShuffleToArray(IEnumerable<T> enumerable) {
+        //    return enumerable.OrderBy(a => RANDOM_NUMBER_GENERATOR.Next()).ToArray();
+        //}
+
+        public static IList<T> Flatten2DArray(T[,] array) {
+            List<T> list = new();
+            for (int row = 0; row < array.GetLength(0); row++) {
+                for (int col = 0; col < array.GetLength(1); col++) {
+                    list.Add(array[row, col]);
+                }
+            }
+            return list;
+        }
+
+        public static IList<T> Shuffle(IEnumerable<T> enumerable) {
+            return enumerable.OrderBy(a => RANDOM_NUMBER_GENERATOR.Next()).ToList();
         }
 
         public static T SelectRandomElement(IEnumerable<T> enumerable) {
