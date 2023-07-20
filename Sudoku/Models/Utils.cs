@@ -52,10 +52,6 @@ namespace Sudoku.Models {
             return true;
         }
 
-        //public static T[] ShuffleToArray(IEnumerable<T> enumerable) {
-        //    return enumerable.OrderBy(a => RANDOM_NUMBER_GENERATOR.Next()).ToArray();
-        //}
-
         public static IList<T> Flatten2DArray(T[,] array) {
             List<T> list = new();
             for (int row = 0; row < array.GetLength(0); row++) {

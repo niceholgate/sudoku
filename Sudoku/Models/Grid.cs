@@ -164,7 +164,6 @@
             return elementGrid;
         }
 
-        // TODO: flag if all solutions were found and added to Solutions
         private bool Solve(int maxSolutions) {
             if (maxSolutions > MAX_SOLUTIONS_LIMIT) {
                 throw new ArgumentException($"Must specify a maximum number of solutions <= {MAX_SOLUTIONS_LIMIT}");
@@ -172,30 +171,35 @@
 
             if (graph.Count == 0) {
                 Solutions.Add(ElementGridToIntGrid(workingValues));
-                // Return false unless decide to finish because have enough solutions (or all?)
-                if (Solutions.Count >= maxSolutions) return true;
+                // Return false unless decide to finish because reached maxSolutions
+                if (Solutions.Count == maxSolutions) return true;
                 return false;
             }
 
             graph.Sort((Element a, Element b) => b.Candidates.Count - a.Candidates.Count);
             Element el = graph.ElementAt(graph.Count - 1);
 
-
-            List<int> oldCandidates = new List<int>(el.Candidates);
-            for (int i = 0; i < oldCandidates.Count; ++i) { // TODO: i++ ?
-                int num = el.Candidates.ElementAt(i);
-                if (el.IsSafe(workingValues, num)) {
-                    el.Candidates = new List<int>(){ num };
+            // Testing out a Candidate is done by setting it as the only one
+            // If no solutions are found for any of this Element's Candidates, put them all back afterwards
+            List<int> candidates = new(el.Candidates);
+            foreach (int c in candidates) {
+                if (el.IsSafe(workingValues, c)) {
+                    el.Candidates = new List<int>(){ c };
                     graph.RemoveAt(graph.Count - 1);
                     if (Solve(maxSolutions)) return true;
                     graph.Add(el);
-                    el.Candidates = oldCandidates;
-                    graph.Sort((Element a, Element b) => b.Candidates.Count - a.Candidates.Count);
                 }
             }
+            el.Candidates = candidates;
             return false;
         }
 
+        /*
+         * Prepares the Grid for solving given current InitialElements according to:
+         * clear the Solutions and graph,
+         * copy the InitialValues to the workingValues,
+         * then populate the graph and find Candidates for graph Elements.
+         */
         private void Initialize() {
             Solutions.Clear();
             graph.Clear();
@@ -212,7 +216,7 @@
         }
 
         /*
-         * If one InitialElement is removed, it is now unknown so gets added to the graph.
+         * More efficient initialization if one InitialElement is removed. It is now unknown so gets added to the graph.
          * Then only need to refresh Candidates for that Element and others in the graph which are possibly affected by it (same row/col/subgrid).
          */
         private void Reinitialize(Element initialElementRemoved) {
