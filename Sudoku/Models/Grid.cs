@@ -1,7 +1,6 @@
 ﻿namespace Sudoku.Models {
 
-    // TODO: implements IClonable
-	public class Grid {
+	public class Grid : ICloneable {
         public static readonly int SUDOKU_ROWS_COLS = 9;
 
         public static readonly int SUDOKU_SUBGRID = 3;
@@ -45,7 +44,7 @@
             this.graph = graph;
         }
 
-        public Grid Clone() {
+        public object Clone() {
             return new Grid(
                 ElementGridToIntGrid(this.InitialElements),
                 new List<int[,]>(this.Solutions),
@@ -108,9 +107,9 @@
                     Utils<Element>.Flatten2DArray(grid.InitialElements)));
 
             // Remove random filled elements until the solution stops being unique
-            Grid previousGrid = grid.Clone();
+            Grid previousGrid = (Grid)grid.Clone();
             while (grid.Solutions.Count == 1) {
-                previousGrid = grid.Clone();
+                previousGrid = (Grid)grid.Clone();
                 Element newlyBlankInitial = shuffledInitialElements.Dequeue();
                 newlyBlankInitial.Candidates.Clear();
                 grid.Reinitialize(newlyBlankInitial);
