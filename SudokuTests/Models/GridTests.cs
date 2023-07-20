@@ -5,9 +5,28 @@ using Sudoku.Models;
 
 [TestClass]
 public class GridTests {
+
+    [TestMethod]
+    public void TestGenerateRandomFilled() {
+        Enumerable.Range(0, 5).Select(i => Grid.GenerateRandomFilled()).ToList().ForEach(grid => {
+                Assert.IsTrue(Grid.IsSolved(grid.InitialElements));
+                Assert.AreEqual(1, grid.Solutions.Count);
+                Assert.IsTrue(grid.AllSolutionsValid());
+            });
+    }
+
+    [TestMethod]
+    public void TestGenerateRandomUniqueSparse() {
+        Enumerable.Range(0, 5).Select(i => Grid.GenerateRandomUniqueSparse()).ToList().ForEach(grid => {
+            Assert.IsFalse(Grid.IsSolved(grid.InitialElements));
+            Assert.AreEqual(1, grid.Solutions.Count);
+            Assert.IsTrue(grid.AllSolutionsValid());
+        });
+    }
+
     [TestMethod]
     public void TestIsSolved_True() {
-        int[,] expectedSolution = {
+        int[,] solvedGrid = {
                          { 3, 1, 6, 5, 7, 8, 4, 9, 2 },
                          { 5, 2, 9, 1, 3, 4, 7, 6, 8 },
                          { 4, 8, 7, 6, 2, 9, 5, 3, 1 },
@@ -18,11 +37,26 @@ public class GridTests {
                          { 6, 9, 2, 3, 5, 1, 8, 7, 4 },
                          { 7, 4, 5, 2, 8, 6, 3, 1, 9 } };
 
-        Grid grid = new(expectedSolution);
-        grid.Solve();
-        Assert.AreEqual(1, grid.Solutions.Count);
-        Assert.IsTrue(grid.AllSolutionsValid());
-        Assert.IsTrue(Utils<int>.CheckGridEquivalence(expectedSolution, grid.Solutions[0]));
+        Grid grid = new(solvedGrid);
+        Assert.IsTrue(Grid.IsSolved(grid.InitialElements));
+
+    }
+
+    [TestMethod]
+    public void TestIsSolved_False() {
+        int[,] solvedGrid = {
+                         { 3, 1, 6, 5, 7, 8, 4, 9, 2 },
+                         { 5, 2, 9, 1, 3, 4, 7, 6, 8 },
+                         { 4, 8, 7, 6, 2, 9, 5, 3, 1 },
+                         { 2, 6, 3, 4, 1, 5, 9, 8, 7 },
+                         { 9, 7, 4, 8, 6, 3, 1, 2, 5 },
+                         { 8, 5, 1, 7, 9, 2, 6, 4, 3 },
+                         { 1, 3, 8, 9, 4, 7, 2, 5, 6 },
+                         { 6, 9, 2, 3, 5, 1, 8, 7, 4 },
+                         { 7, 4, 5, 2, 8, 6, 3, 1, 0 } };
+
+        Grid grid = new(solvedGrid);
+        Assert.IsFalse(Grid.IsSolved(grid.InitialElements));
     }
 
     [TestMethod]
@@ -118,51 +152,14 @@ public class GridTests {
         Grid grid = new(initialValues);
         grid.Solve();
 
-        Assert.AreEqual(grid.Solutions.Count, 6);
+        Assert.AreEqual(6, grid.Solutions.Count);
         Assert.IsTrue(grid.AllSolutionsValid());
-        Assert.AreEqual(Enumerable.Range(0, grid.Solutions.Count).Select(i => Utils<int>.CheckGridEquivalence(expectedSolution, grid.Solutions[i])).Count(x => x == true), 1);
+        int numMatchingExpectedSolution = grid.Solutions.Select(soln => Utils<int>.CheckGridEquivalence(expectedSolution, soln)).Count(x => x == true);
+        Assert.AreEqual(1, numMatchingExpectedSolution);
     }
 
-    // Print any grid
-    public void PrintValues(int [,] values) {
-        for (int i = 0; i < values.GetLength(0); i++) {
-            for (int j = 0; j < values.GetLength(1); j++) {
-                Console.Write(values[i, j] + " ");
-            }
-            Console.WriteLine();
-        }
-        Console.WriteLine();
-    }
 
-    [TestMethod]
-    public void TestGenerateRandomFilled() {
-        List<Grid> randomGrids = Enumerable.Range(0, 10).Select(x => Grid.GenerateRandomFilled()).ToList();
-        foreach (Grid grid in randomGrids) {
-            Assert.AreEqual(1, grid.Solutions.Count);
-            Assert.IsTrue(grid.AllSolutionsValid());
-        }
-    }
 
-    [TestMethod]
-    public void TestGenerateRandomUniqueSparse() {
-        List<Grid> randomGrids = Enumerable.Range(0, 5).Select(x => Grid.GenerateRandomUniqueSparse()).ToList();
-        foreach (Grid grid in randomGrids) {
-            Assert.IsFalse(Grid.IsSolved(grid.InitialElements));
-            Assert.AreEqual(1, grid.Solutions.Count);
-            Assert.IsTrue(grid.AllSolutionsValid());
-        }
-    }
-
+ 
 }
 
-// Various initial values tests
-//int[,] initialValues = {
-//                 { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-//                 { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-//                 { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-//                 { 0, 0, 0, 8, 0, 0, 0, 0, 0 },
-//                 { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-//                 { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-//                 { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-//                 { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-//                 { 0, 0, 0, 0, 0, 0, 0, 0, 0 } };

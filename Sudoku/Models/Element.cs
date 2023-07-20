@@ -1,7 +1,5 @@
-﻿
-
-namespace Sudoku.Models {
-	public class Element {
+﻿namespace Sudoku.Models {
+	public class Element : IEquatable<Element> {
 		public readonly int row;
 
 		public readonly int col;
@@ -25,32 +23,11 @@ namespace Sudoku.Models {
             Candidates = finalValue == 0 ? new List<int>() : new List<int>() { finalValue };
         }
 
+        /*
+         * Check if this Element's current value is safe on a given grid Elements
+         */
         public bool IsSafe(Element[,] gridElements) {
             return IsSafe(gridElements, FinalValue);
-        }
-
-        public bool IsSafe(Element[,] gridElements, int candidate) {
-            if (candidate == 0) return false;
-            if (candidate < 0 || candidate > 9) {
-                throw new ArgumentOutOfRangeException($"Illegal Sudoku value: {candidate}");
-            };
-
-            // Check the row and column for this candidate
-            for (int i = 0; i < Grid.SUDOKU_ROWS_COLS; i++) {
-                if (i != col && gridElements[row, i].FinalValue == candidate) return false;
-                if (i != row && gridElements[i, col].FinalValue == candidate) return false;
-            }
-
-            // Check the subgrid for this candidate
-            int startRow = row - row % Grid.SUDOKU_SUBGRID;
-            int startCol = col - col % Grid.SUDOKU_SUBGRID;
-            for (int i = startRow; i < startRow + Grid.SUDOKU_SUBGRID; i++) {
-                for (int j = startCol; j < startCol + Grid.SUDOKU_SUBGRID; j++) {
-                    if (gridElements[i, j].FinalValue == candidate && !(i == row && j == col)) return false;
-                }
-            }
-
-            return true;
         }
 
         /*
@@ -79,6 +56,45 @@ namespace Sudoku.Models {
 
         private bool SameSubGrid(Element otherElement) {
             return this.SubRow == otherElement.SubRow && this.SubCol == otherElement.SubCol;
+        }
+
+        private bool IsSafe(Element[,] gridElements, int candidate) {
+            if (candidate == 0) return false;
+            if (candidate < 0 || candidate > 9) {
+                throw new ArgumentOutOfRangeException($"Illegal Sudoku value: {candidate}");
+            };
+
+            // Check the row and column for this candidate
+            for (int i = 0; i < Grid.SUDOKU_ROWS_COLS; i++) {
+                if ((i != col && gridElements[row, i].FinalValue == candidate) ||
+                    (i != row && gridElements[i, col].FinalValue == candidate)) return false;
+            }
+
+            // Check the subgrid for this candidate
+            int startRow = row - row % Grid.SUDOKU_SUBGRID;
+            int startCol = col - col % Grid.SUDOKU_SUBGRID;
+            for (int i = startRow; i < startRow + Grid.SUDOKU_SUBGRID; i++) {
+                for (int j = startCol; j < startCol + Grid.SUDOKU_SUBGRID; j++) {
+                    if (gridElements[i, j].FinalValue == candidate && !(i == row && j == col)) return false;
+                }
+            }
+
+            return true;
+        }
+
+        public bool Equals(Element? other) {
+            return other != null &&
+                other.row.Equals(row) &&
+                other.col.Equals(col) && 
+                other.Candidates.SequenceEqual(Candidates);
+        }
+
+        public override bool Equals(object? obj) {
+            return Equals(obj as Element);
+        }
+
+        public override int GetHashCode() {
+            return HashCode.Combine(row, col, Candidates);
         }
     }
 }

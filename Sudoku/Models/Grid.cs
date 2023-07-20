@@ -182,8 +182,8 @@
             // If no solutions are found for any of this Element's Candidates, put them all back afterwards
             List<int> candidates = new(el.Candidates);
             foreach (int c in candidates) {
-                if (el.IsSafe(workingValues, c)) {
-                    el.Candidates = new List<int>(){ c };
+                el.Candidates = new List<int>() { c };
+                if (el.IsSafe(workingValues)) {
                     graph.RemoveAt(graph.Count - 1);
                     if (Solve(maxSolutions)) return true;
                     graph.Add(el);
