@@ -38,13 +38,13 @@ namespace Sudoku.Models {
         /*
         * Check two 2D multidimensional arrays are the same.
         */
-        public static bool CheckGridEquivalence(T[,] grid1, T[,] grid2) {
-            if (grid1.GetLength(0) != grid2.GetLength(0) ||
-                grid1.GetLength(1) != grid2.GetLength(1)) return false;
+        public static bool CheckArrayEquivalence(T[,] arr1, T[,] arr2) {
+            if (arr1.GetLength(0) != arr2.GetLength(0) ||
+                arr1.GetLength(1) != arr2.GetLength(1)) return false;
 
-            for (int i = 0; i < grid1.GetLength(0); i++) {
-                for (int j = 0; j < grid1.GetLength(1); j++) {
-                    if (!grid1[i, j].Equals(grid2[i, j])) return false;
+            for (int i = 0; i < arr1.GetLength(0); i++) {
+                for (int j = 0; j < arr1.GetLength(1); j++) {
+                    if (!arr1[i, j].Equals(arr2[i, j])) return false;
                 }
             }
 
@@ -59,6 +59,37 @@ namespace Sudoku.Models {
                 }
             }
             return list;
+        }
+
+        public static IList<List<T>> Listify2DArray(T[,] array) {
+            return Enumerable.Range(0, array.GetLength(0))
+                    .Select(row => Enumerable.Range(0, array.GetLength(1))
+                                .Select(col => array[row, col])
+                                .ToList())
+                    .ToList();
+        }
+
+        // TODO: maybe should change to lists-of-lists to avoid use of this
+        /*
+         * Convert a list-of-lists to a 2D array.
+         * null if no data or if nested lists are of different lengths.
+         */
+        public static T[,]? Create2DArray(IList<List<T>> listOfLists) {
+            T[,]? array = null;
+            int len1 = listOfLists.Count;
+            if (len1 > 0) {
+                int len2 = listOfLists[0].Count;
+                if (len2 > 0) { 
+                    array = new T[len1, len2];
+                    for (int i = 0; i < len1; i++) {
+                        if (listOfLists[i].Count != len2) return null;
+                        for (int j = 0; j < len2; j++) {
+                            array[i, j] = listOfLists[i][j];
+                        }
+                    }
+                }
+            }
+            return array;
         }
 
         public static IList<T> Shuffle(IEnumerable<T> enumerable) {

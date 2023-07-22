@@ -88,7 +88,7 @@ public class GridTests {
 
         Assert.AreEqual(1, grid.Solutions.Count);
         Assert.IsTrue(grid.AllSolutionsValid());
-        Assert.IsTrue(Utils<int>.CheckGridEquivalence(expectedSolution, grid.Solutions[0]));
+        Assert.IsTrue(Utils<int>.CheckArrayEquivalence(expectedSolution, grid.Solutions[0].FinalValues));
     }
 
     [TestMethod]
@@ -120,7 +120,7 @@ public class GridTests {
 
         Assert.AreEqual(1, grid.Solutions.Count);
         Assert.IsTrue(grid.AllSolutionsValid());
-        Assert.IsTrue(Utils<int>.CheckGridEquivalence(expectedSolution, grid.Solutions[0]));
+        Assert.IsTrue(Utils<int>.CheckArrayEquivalence(expectedSolution, grid.Solutions[0].FinalValues));
     }
 
     [TestMethod]
@@ -154,7 +154,7 @@ public class GridTests {
 
         Assert.AreEqual(6, grid.Solutions.Count);
         Assert.IsTrue(grid.AllSolutionsValid());
-        int numMatchingExpectedSolution = grid.Solutions.Select(soln => Utils<int>.CheckGridEquivalence(expectedSolution, soln)).Count(x => x == true);
+        int numMatchingExpectedSolution = grid.Solutions.Select(soln => Utils<int>.CheckArrayEquivalence(expectedSolution, soln.FinalValues)).Count(x => x == true);
         Assert.AreEqual(1, numMatchingExpectedSolution);
     }
 

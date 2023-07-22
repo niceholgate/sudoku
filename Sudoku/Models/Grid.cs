@@ -1,4 +1,6 @@
-﻿namespace Sudoku.Models {
+﻿using System;
+
+namespace Sudoku.Models {
 
 	public class Grid : ICloneable {
         public static readonly int SUDOKU_ROWS_COLS = 9;
@@ -11,7 +13,12 @@
 
         public int[,] InitialValues { get { return ElementGridToIntGrid(InitialElements); } }
 
-        public List<int[,]> Solutions { get; } = new();
+        public List<Solution> Solutions { get; } = new();
+
+        /*
+         * Used to track the steps used in arriving at each Solution. Add it to Solutions list once it is finalized.
+         */
+        private Solution workingSolution = new();
 
         /*
          * Used to look for Solutions.
@@ -39,7 +46,7 @@
         /*
          * Constructor for cloning.
          */
-        public Grid(int[,] initialValues, List<int[,]> solutions, Element[,] workingValues, List<Element> graph) {
+        public Grid(int[,] initialValues, List<Solution> solutions, Element[,] workingValues, List<Element> graph) {
             this.InitialElements = IntGridToUninitializedElementGrid(initialValues);
             this.Solutions = solutions;
             this.workingElements = workingValues;
@@ -49,17 +56,20 @@
         public object Clone() {
             return new Grid(
                 ElementGridToIntGrid(this.InitialElements),
-                new List<int[,]>(this.Solutions),
+                new List<Solution>(this.Solutions),
                 (Element[,])this.workingElements.Clone(),
                 new List<Element>(this.graph));
         }
+
+        // It seems like one or both of the below methods is slow sometimes.
+        // Maybe could analyse Solve() stack depths and come up with kill criteria which predict when it will be slow (and restart).
+        // Or actually fix the algo...
 
         /*
          * Generate a random completely filled grid based on a random initial row + column solved using 
          * the backtracking solver (deterministic based on the initial values).
          */
         public static Grid GenerateRandomFilled() {
-
             int[,] values = new int[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
 
             // Create a random row and insert it randomly
@@ -84,7 +94,7 @@
             Grid grid = new(elementGrid);
             grid.Solve(1);
             // Creating yet another grid is a hack to replace the initial values with the solution
-            Grid finalGrid = new(grid.Solutions[0]);
+            Grid finalGrid = new(grid.Solutions[0].FinalValues);
             finalGrid.Solve(1);
             return finalGrid;
         }
@@ -128,8 +138,8 @@
         }
 
         public bool AllSolutionsValid() {
-            foreach (int[,] soln in Solutions) {
-                if (!IsSolved(IntGridToUninitializedElementGrid(soln))) return false;
+            foreach (Solution soln in Solutions) {
+                if (!IsSolved(IntGridToUninitializedElementGrid(soln.FinalValues))) return false;
             }
             return true;
         }
@@ -171,7 +181,10 @@
             } 
 
             if (graph.Count == 0) {
-                Solutions.Add(ElementGridToIntGrid(workingElements));
+                int[,] finalValues = ElementGridToIntGrid(workingElements);
+                workingSolution.FinalValues = finalValues;
+                Solutions.Add(workingSolution);
+                workingSolution = new Solution();
                 // Return false unless decide to finish because reached maxSolutions
                 if (Solutions.Count == maxSolutions) return true;
                 return false;
@@ -186,8 +199,13 @@
             foreach (int c in candidates) {
                 el.Candidates = new List<int>() { c };
                 if (el.IsSafe(workingElements)) {
+                    workingSolution.AddNewStep(new Solution.Step(el.row, el.col, el.FinalValue));
                     graph.RemoveAt(graph.Count - 1);
-                    if (Solve(maxSolutions)) return true;
+                    if (Solve(maxSolutions)) {
+                        workingSolution.RemoveLastStep();
+                        return true;
+                    }
+                    workingSolution.RemoveLastStep();
                     graph.Add(el);
                 }
             }
