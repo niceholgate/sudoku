@@ -9,12 +9,14 @@
 
         public Element[,] InitialElements { get; }
 
+        public int[,] InitialValues { get { return ElementGridToIntGrid(InitialElements); } }
+
         public List<int[,]> Solutions { get; } = new();
 
         /*
          * Used to look for Solutions.
          */
-        private Element[,] workingValues = new Element[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
+        private Element[,] workingElements = new Element[SUDOKU_ROWS_COLS, SUDOKU_ROWS_COLS];
 
         /*
          * Used to look for Solutions - refers to workingValues elements.
@@ -40,7 +42,7 @@
         public Grid(int[,] initialValues, List<int[,]> solutions, Element[,] workingValues, List<Element> graph) {
             this.InitialElements = IntGridToUninitializedElementGrid(initialValues);
             this.Solutions = solutions;
-            this.workingValues = workingValues;
+            this.workingElements = workingValues;
             this.graph = graph;
         }
 
@@ -48,7 +50,7 @@
             return new Grid(
                 ElementGridToIntGrid(this.InitialElements),
                 new List<int[,]>(this.Solutions),
-                (Element[,])this.workingValues.Clone(),
+                (Element[,])this.workingElements.Clone(),
                 new List<Element>(this.graph));
         }
 
@@ -169,7 +171,7 @@
             } 
 
             if (graph.Count == 0) {
-                Solutions.Add(ElementGridToIntGrid(workingValues));
+                Solutions.Add(ElementGridToIntGrid(workingElements));
                 // Return false unless decide to finish because reached maxSolutions
                 if (Solutions.Count == maxSolutions) return true;
                 return false;
@@ -183,7 +185,7 @@
             List<int> candidates = new(el.Candidates);
             foreach (int c in candidates) {
                 el.Candidates = new List<int>() { c };
-                if (el.IsSafe(workingValues)) {
+                if (el.IsSafe(workingElements)) {
                     graph.RemoveAt(graph.Count - 1);
                     if (Solve(maxSolutions)) return true;
                     graph.Add(el);
@@ -205,7 +207,7 @@
             for (int row = 0; row < SUDOKU_ROWS_COLS; row++) {
                 for (int col = 0; col < SUDOKU_ROWS_COLS; col++) {
                     Element el = new(row, col, InitialElements[row, col].FinalValue);
-                    workingValues[row, col] = el;
+                    workingElements[row, col] = el;
                     if (el.FinalValue == 0) {
                         el.RefreshCandidates(InitialElements);
                         graph.Add(el);
@@ -220,8 +222,8 @@
          */
         private void Reinitialize(Element initialElementRemoved) {
             Solutions.Clear();
-            workingValues[initialElementRemoved.row, initialElementRemoved.col] = new Element(initialElementRemoved.row, initialElementRemoved.col, 0);
-            graph.Add(workingValues[initialElementRemoved.row, initialElementRemoved.col]);
+            workingElements[initialElementRemoved.row, initialElementRemoved.col] = new Element(initialElementRemoved.row, initialElementRemoved.col, 0);
+            graph.Add(workingElements[initialElementRemoved.row, initialElementRemoved.col]);
             foreach (Element el in graph) {
                 if (initialElementRemoved.AffectsCandidatesForOther(el)) {
                     el.RefreshCandidates(InitialElements);
