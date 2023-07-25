@@ -5,6 +5,30 @@ using Sudoku.Models;
 [TestClass]
 public  class ElementTests {
     [TestMethod]
+    public void TestInitialInvalidation_IllegalRow() {
+        var ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Element(9, 0, 0));
+        Assert.AreEqual("Tried to make an Element with an illegal Sudoku row value: 9 (Parameter 'row')", ex.Message);
+        ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Element(-1, 0, 0));
+        Assert.AreEqual("Tried to make an Element with an illegal Sudoku row value: -1 (Parameter 'row')", ex.Message);
+    }
+
+    [TestMethod]
+    public void TestInitialInvalidation_IllegalCol() {
+        var ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Element(0, 9, 0));
+        Assert.AreEqual("Tried to make an Element with an illegal Sudoku col value: 9 (Parameter 'col')", ex.Message);
+        ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Element(0, -1, 0));
+        Assert.AreEqual("Tried to make an Element with an illegal Sudoku col value: -1 (Parameter 'col')", ex.Message);
+    }
+
+    [TestMethod]
+    public void TestInitialInvalidation_IllegalValue() {
+        var ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Element(0, 0, 10));
+        Assert.AreEqual("Tried to make an Element with an illegal Sudoku cell value: 10 (Parameter 'finalValue')", ex.Message);
+        ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Element(0, 0, -1));
+        Assert.AreEqual("Tried to make an Element with an illegal Sudoku cell value: -1 (Parameter 'finalValue')", ex.Message);
+    }
+
+    [TestMethod]
     public void TestIsSafe_True() {
         int[,] initialValues = {
                          { 3, 1, 6, 5, 7, 8, 4, 9, 2 },

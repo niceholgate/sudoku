@@ -9,11 +9,47 @@ namespace Sudoku.Models {
 
         public static readonly int MAX_SOLUTIONS_LIMIT = 500;
 
-        public Element[,] InitialElements { get; }
+        public Element[,] InitialElements { get {
+                return initialElements;
+            }
+            private set {
+                ValidateInitialElements(value);
+                initialElements = value;
+            }
+        }
+
+        private void ValidateInitialElements(Element[,] initialElements) {
+            int dim0 = initialElements.GetLength(0);
+            int dim1 = initialElements.GetLength(1);
+            if (dim0 != SUDOKU_ROWS_COLS || dim1 != SUDOKU_ROWS_COLS) {
+                throw new ArgumentException($"Tried to create a Grid not of size 9x9. Attempted size: {dim0}x{dim1}");
+            }
+
+            // The smallest number of clues that a Sudoku problem can have is 17 (i.e. 64 empty):
+            // https://arxiv.org/abs/1201.0749
+            int clueCount = 0;
+            for (int row = 0; row < dim0; row++) {
+                for (int col = 0; col < dim1; col++) {
+                    if (initialElements[row, col].FinalValue != 0) {
+                        clueCount++;
+                        // And there should be no unsafe clues (would make unique solution impossible)
+                        if (!initialElements[row, col].IsSafe(initialElements)) {
+                            throw new ArgumentException($"Tried to create a Grid with an unsafe clue at ({row}, {col})");
+                        }
+                    }
+
+                }
+            }
+            if (clueCount < 17) {
+                throw new ArgumentException($"Tried to create a Grid only {clueCount} clues - cannot be a valid Sudoku problem - minimum is 17!");
+            }
+        }
 
         public int[,] InitialValues { get { return ElementGridToIntGrid(InitialElements); } }
 
         public List<Solution> Solutions { get; } = new();
+
+        private Element[,] initialElements = new Element[Grid.SUDOKU_ROWS_COLS, Grid.SUDOKU_ROWS_COLS];
 
         /*
          * Used to track the steps used in arriving at each Solution. Add it to Solutions list once it is finalized.
@@ -108,7 +144,10 @@ namespace Sudoku.Models {
          * Easy      : 25 < empty <= 30
          * Medium    : 30 < empty <= 40
          * Hard      : 40 < empty <= 45
-         * Very Hard : > 45 empty
+         * Very Hard : > 45 empty ()
+         * 
+         * The smallest number of clues that a Sudoku problem can have is 17 (i.e. 64 empty):
+         * https://arxiv.org/abs/1201.0749
          */
         public static Grid GenerateRandomUniqueSparse() {
             Grid grid = GenerateRandomFilled();
@@ -148,37 +187,10 @@ namespace Sudoku.Models {
             return Solve(MAX_SOLUTIONS_LIMIT);
         }
 
-        private static bool IsSubColumnSafe(int col, int rowStart, int rowEnd, Element[,] grid) {
-            for (int row = rowStart; row <= rowEnd; row++) {
-                if (!grid[row, col].IsSafe(grid)) return false;
-            }
-            return true;
-        }
-
-        private static int[,] ElementGridToIntGrid(Element[,] elementGrid) {
-            int[,] finalValues = new int[elementGrid.GetLength(0), elementGrid.GetLength(1)];
-            for (int row = 0; row < elementGrid.GetLength(0); row++) {
-                for (int col = 0; col < elementGrid.GetLength(1); col++) {
-                    finalValues[row, col] = elementGrid[row, col].FinalValue;
-                }
-            }
-            return finalValues;
-        }
-
-        private static Element[,] IntGridToUninitializedElementGrid(int[,] finalValues) {
-            Element[,] elementGrid = new Element[finalValues.GetLength(0), finalValues.GetLength(1)];
-            for (int row = 0; row < finalValues.GetLength(0); row++) {
-                for (int col = 0; col < finalValues.GetLength(1); col++) {
-                    elementGrid[row, col] = new Element(row, col, finalValues[row, col]);
-                }
-            }
-            return elementGrid;
-        }
-
-        private bool Solve(int maxSolutions) {
+        public bool Solve(int maxSolutions) {
             if (maxSolutions > MAX_SOLUTIONS_LIMIT) {
                 throw new ArgumentException($"Must specify a maximum number of solutions <= {MAX_SOLUTIONS_LIMIT}");
-            } 
+            }
 
             if (graph.Count == 0) {
                 int[,] finalValues = ElementGridToIntGrid(workingElements);
@@ -211,6 +223,33 @@ namespace Sudoku.Models {
             }
             el.Candidates = candidates;
             return false;
+        }
+
+        private static bool IsSubColumnSafe(int col, int rowStart, int rowEnd, Element[,] grid) {
+            for (int row = rowStart; row <= rowEnd; row++) {
+                if (!grid[row, col].IsSafe(grid)) return false;
+            }
+            return true;
+        }
+
+        private static int[,] ElementGridToIntGrid(Element[,] elementGrid) {
+            int[,] finalValues = new int[elementGrid.GetLength(0), elementGrid.GetLength(1)];
+            for (int row = 0; row < elementGrid.GetLength(0); row++) {
+                for (int col = 0; col < elementGrid.GetLength(1); col++) {
+                    finalValues[row, col] = elementGrid[row, col].FinalValue;
+                }
+            }
+            return finalValues;
+        }
+
+        private static Element[,] IntGridToUninitializedElementGrid(int[,] finalValues) {
+            Element[,] elementGrid = new Element[finalValues.GetLength(0), finalValues.GetLength(1)];
+            for (int row = 0; row < finalValues.GetLength(0); row++) {
+                for (int col = 0; col < finalValues.GetLength(1); col++) {
+                    elementGrid[row, col] = new Element(row, col, finalValues[row, col]);
+                }
+            }
+            return elementGrid;
         }
 
         /*

@@ -8,15 +8,20 @@
 
         public int SubCol { get { return col / Grid.SUDOKU_SUBGRID; } }
 
+        // TODO: validate that all candidates are always only 1-9 inclusive
         public List<int> Candidates { get; set; }
 
+        // 0 finalValue means it is not yet determined (there are multiple Candidates left)
         public int FinalValue { get {
                 return Candidates.Count == 1 ? Candidates.ElementAt(0) : 0; } }
 
-        // finalValue = 0 if unknown
         public Element(int row, int col, int finalValue) {
-            if (row < 0 || row > 8 || col < 0 || col > 8) {
-                throw new ArgumentOutOfRangeException($"Illegal row or col value: ({row}, {col})");
+            if (row < 0 || row > 8) {
+                throw new ArgumentOutOfRangeException(nameof(row), $"Tried to make an Element with an illegal Sudoku row value: {row}");
+            } else if (col < 0 || col > 8) {
+                throw new ArgumentOutOfRangeException(nameof(col), $"Tried to make an Element with an illegal Sudoku col value: {col}");
+            } else if (finalValue < 0 || finalValue > 9) {
+                throw new ArgumentOutOfRangeException(nameof(finalValue), $"Tried to make an Element with an illegal Sudoku cell value: {finalValue}");
             }
             this.row = row;
             this.col = col;
