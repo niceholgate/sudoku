@@ -162,7 +162,7 @@ namespace Sudoku.Models {
             while (grid.Solutions.Count == 1) {
                 previousGrid = (Grid)grid.Clone();
                 Element newlyBlankInitial = shuffledInitialElements.Dequeue();
-                newlyBlankInitial.Candidates.Clear();
+                newlyBlankInitial.SetCandidates(new HashSet<int>());
                 grid.Reinitialize(newlyBlankInitial);
                 grid.Solve();
             }
@@ -202,14 +202,14 @@ namespace Sudoku.Models {
                 return false;
             }
 
-            graph.Sort((Element a, Element b) => b.Candidates.Count - a.Candidates.Count);
+            graph.Sort((Element a, Element b) => b.GetCandidates().Count - a.GetCandidates().Count);
             Element el = graph.ElementAt(graph.Count - 1);
 
             // Testing out a Candidate is done by setting it as the only one
             // If no solutions are found for any of this Element's Candidates, put them all back afterwards
-            List<int> candidates = new(el.Candidates);
+            HashSet<int> candidates = el.GetCandidates();
             foreach (int c in candidates) {
-                el.Candidates = new List<int>() { c };
+                el.SetCandidates(new HashSet<int>() { c });
                 if (el.IsSafe(workingElements)) {
                     workingSolution.AddNewStep(new Solution.Step(el.row, el.col, el.FinalValue));
                     graph.RemoveAt(graph.Count - 1);
@@ -221,7 +221,7 @@ namespace Sudoku.Models {
                     graph.Add(el);
                 }
             }
-            el.Candidates = candidates;
+            el.SetCandidates(candidates);
             return false;
         }
 

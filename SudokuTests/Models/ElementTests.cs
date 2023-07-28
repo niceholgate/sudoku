@@ -29,6 +29,35 @@ public  class ElementTests {
     }
 
     [TestMethod]
+    public void TestGetCandidates_IsACopy() {
+        Element el = new(0, 0, 5);
+        HashSet<int> candidates = el.GetCandidates();
+        candidates.Add(6);
+
+        Assert.IsTrue(candidates.Contains(5));
+        Assert.IsTrue(candidates.Contains(6));
+        Assert.IsTrue(el.GetCandidates().Contains(5));
+        Assert.IsFalse(el.GetCandidates().Contains(6));
+    }
+
+    [TestMethod]
+    public void TestSetCandidates_Success() {
+        Element el = new(0, 0, 5);
+        Assert.IsFalse(el.GetCandidates().Contains(6));
+        el.SetCandidates(new HashSet<int>() { 6 });
+        
+        Assert.IsTrue(el.GetCandidates().Contains(6));
+        Assert.IsFalse(el.GetCandidates().Contains(5));
+    }
+
+    [TestMethod]
+    public void TestSetCandidates_OutOfRange() {
+        Element el = new(0, 0, 5);
+        var ex = Assert.ThrowsException<ArgumentOutOfRangeException>(() => el.SetCandidates(new HashSet<int>() { 6, 11 }));
+        Assert.AreEqual("Tried to set Candidates with one or more of them out of valid range (1-9): 6, 11 (Parameter 'candidates')", ex.Message);
+    }
+
+    [TestMethod]
     public void TestIsSafe_True() {
         int[,] initialValues = {
                          { 3, 1, 6, 5, 7, 8, 4, 9, 2 },
@@ -101,12 +130,12 @@ public  class ElementTests {
         Grid grid = new(initialValues);
         Element el88 = new(8, 8, 0);
         Element el78 = new(7, 8, 0);
-        Assert.IsTrue(el78.Candidates.SequenceEqual(new List<int>()));
-        Assert.IsTrue(el88.Candidates.SequenceEqual(new List<int>()));
+        Assert.IsTrue(el78.GetCandidates().SetEquals(new HashSet<int>()));
+        Assert.IsTrue(el88.GetCandidates().SetEquals(new HashSet<int>()));
         el78.RefreshCandidates(grid.InitialElements);
         el88.RefreshCandidates(grid.InitialElements);
-        Assert.IsTrue(el78.Candidates.SequenceEqual(new List<int>() { 4 }));
-        Assert.IsTrue(el88.Candidates.SequenceEqual(new List<int>() { 4, 9 }));
+        Assert.IsTrue(el78.GetCandidates().SetEquals(new HashSet<int>() { 4 }));
+        Assert.IsTrue(el88.GetCandidates().SetEquals(new HashSet<int>() { 4, 9 }));
     }
 
     [TestMethod]
@@ -147,24 +176,30 @@ public  class ElementTests {
 
     [TestMethod]
     public void TestEquals_True() {
-        Element elThis = new(1, 1, 0) { Candidates = new List<int>() { 1, 2 } };
-        Element elThat = new(1, 1, 0) { Candidates = new List<int>() { 1, 2 } };
+        Element elThis = new(1, 1, 0);
+        elThis.SetCandidates(new HashSet<int>() { 1, 2 });
+        Element elThat = new(1, 1, 0);
+        elThat.SetCandidates(new HashSet<int>() { 1, 2 });
 
         Assert.AreEqual(elThis, elThat);
     }
 
     [TestMethod]
     public void TestEquals_DifferentCoords() {
-        Element elThis = new(1, 1, 0) { Candidates = new List<int>() { 1, 2 } };
-        Element elThat = new(1, 5, 0) { Candidates = new List<int>() { 1, 2 } };
+        Element elThis = new(1, 1, 0);
+        elThis.SetCandidates(new HashSet<int>() { 1, 2 });
+        Element elThat = new(1, 5, 0); ;
+        elThat.SetCandidates(new HashSet<int>() { 1, 2 });
 
         Assert.AreNotEqual(elThis, elThat);
     }
 
     [TestMethod]
     public void TestEquals_DifferentCandidates() {
-        Element elThis = new(1, 1, 0) { Candidates = new List<int>() { 1, 2 } };
-        Element elThat = new(1, 1, 0) { Candidates = new List<int>() { 1, 3 } };
+        Element elThis = new(1, 1, 0);
+        elThis.SetCandidates(new HashSet<int>() { 1, 2 });
+        Element elThat = new(1, 1, 0);
+        elThat.SetCandidates(new HashSet<int>() { 1, 3 });
 
         Assert.AreNotEqual(elThis, elThat);
     }

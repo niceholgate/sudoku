@@ -1,19 +1,29 @@
 ﻿namespace Sudoku.Models {
-	public class Element : IEquatable<Element> {
-		public readonly int row;
+    public class Element : IEquatable<Element> {
+        public readonly int row;
 
-		public readonly int col;
+        public readonly int col;
 
-		public int SubRow { get { return row / Grid.SUDOKU_SUBGRID; } }
+        public int SubRow { get { return row / Grid.SUDOKU_SUBGRID; } }
 
         public int SubCol { get { return col / Grid.SUDOKU_SUBGRID; } }
 
-        // TODO: validate that all candidates are always only 1-9 inclusive
-        public List<int> Candidates { get; set; }
+        private HashSet<int> candidates;
+
+        public HashSet<int> GetCandidates() {
+            return new HashSet<int>(candidates);
+        }
+
+        public void SetCandidates(HashSet<int> candidates) {
+            if (candidates.Count > 0 && (candidates.Min() < 1 || candidates.Max() > 9)) {
+                throw new ArgumentOutOfRangeException(nameof(candidates), $"Tried to set Candidates with one or more of them out of valid range (1-9): {String.Join(", ", candidates)}");
+            }
+            this.candidates = candidates;
+        }
 
         // 0 finalValue means it is not yet determined (there are multiple Candidates left)
         public int FinalValue { get {
-                return Candidates.Count == 1 ? Candidates.ElementAt(0) : 0; } }
+                return candidates.Count == 1 ? candidates.ElementAt(0) : 0; } }
 
         public Element(int row, int col, int finalValue) {
             if (row < 0 || row > 8) {
@@ -25,7 +35,11 @@
             }
             this.row = row;
             this.col = col;
-            Candidates = finalValue == 0 ? new List<int>() : new List<int>() { finalValue };
+            if (finalValue == 0) {
+                candidates = new HashSet<int>();
+            } else {
+                candidates = new HashSet<int>() { finalValue };
+            }
         }
 
         /*
@@ -39,10 +53,10 @@
          * Add the candidates to an element given the InitialValues grid.
          */
         public void RefreshCandidates(Element[,] initialValues) {
-            Candidates.Clear();
+            candidates.Clear();
             for (int num = 1; num <= Grid.SUDOKU_ROWS_COLS; num++) {
                 if (IsSafe(initialValues, num)) {
-                    Candidates.Add(num);
+                    candidates.Add(num);
                 }
             }
         }
@@ -91,7 +105,7 @@
             return other != null &&
                 other.row.Equals(row) &&
                 other.col.Equals(col) && 
-                other.Candidates.SequenceEqual(Candidates);
+                other.GetCandidates().SequenceEqual(candidates);
         }
 
         public override bool Equals(object? obj) {
@@ -99,7 +113,7 @@
         }
 
         public override int GetHashCode() {
-            return HashCode.Combine(row, col, Candidates);
+            return HashCode.Combine(row, col, candidates);
         }
     }
 }
