@@ -33,7 +33,11 @@ public class GridController : ControllerBase
         // TODO: validate the input - and tidy exception logic
         //(int row, int col, int num)? hint = null;
         int[,]? initialValuesArray = Utils<int>.Create2DArray(currentGrid);
-        try {
+        if (initialValuesArray == null) {
+            return BadRequest("Could not get a hint");
+        }
+
+            try {
             if (initialValuesArray != null) {
                 Grid grid = new(initialValuesArray);
                 grid.Solve(1);
